@@ -1,0 +1,12 @@
+async-timeout==4.0.2
+boto3==1.26.122
+botocore==1.29.122
+jmespath==1.0.1
+pydantic==1.10.7
+PyMySQL==1.0.3
+python-dateutil==2.8.2
+redis==4.5.4
+s3transfer==0.6.0
+six==1.16.0
+typing_extensions==4.5.0
+urllib3==1.26.15

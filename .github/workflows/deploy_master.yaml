@@ -20,9 +20,10 @@ jobs:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET }}
           aws-region: ap-northeast-2
+
       - name: Add Github Actions IP to Security group
         run: |
           aws ec2 authorize-security-group-ingress --group-id sg-00f3afd6aadf0c5ca --protocol tcp --port 22 --cidr ${{ steps.ip.outputs.ipv4 }}/32

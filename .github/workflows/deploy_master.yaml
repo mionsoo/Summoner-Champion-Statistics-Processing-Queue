@@ -28,15 +28,12 @@ jobs:
         run: |
           aws ec2 authorize-security-group-ingress --group-id sg-00f3afd6aadf0c5ca --protocol tcp --port 22 --cidr ${{ steps.ip.outputs.ipv4 }}/32
 
-            
-
       - name: executing remote ssh commands using password
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.HOST }}
           username: ubuntu
           key: ${{ secrets.KEY }}
-          port: 22
           script: |
             sudo git pull
             sudo docker-compose build

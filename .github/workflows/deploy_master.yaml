@@ -13,23 +13,6 @@ jobs:
       - name: checkout
         uses: actions/checkout@master
 
-      - name: create remote directory
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.HOST }}
-          username: ubuntu
-          key: ${{ secrets.KEY }}
-          script: mkdir -p /home/ubuntu/
-
-      - name: copy source via ssh key
-        uses: burnett01/rsync-deployments@4.1
-        with:
-          switches: -avzr --delete
-          remote_path: /home/ubuntu/
-          remote_host: ${{ secrets.HOST }}
-          remote_user: ubuntu
-          remote_key: ${{ secrets.KEY }}
-
       - name: executing remote ssh commands using password
         uses: appleboy/ssh-action@master
         env:
@@ -39,4 +22,7 @@ jobs:
           username: ubuntu
           key: ${{ secrets.KEY }}
           script: |
-            sh /home/ubuntu/config/scripts/deploy.sh
+            sudo git pull
+            sudo docker-compose build
+            sudo docker-compose down
+            sudo docker-compose up -d

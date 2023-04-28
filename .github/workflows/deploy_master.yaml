@@ -33,10 +33,10 @@ jobs:
       - name: executing remote ssh commands using password
         uses: appleboy/ssh-action@master
         env:
-          DEPLOY_USERNAME: hanqyu
+          DEPLOY_USERNAME: ubuntu
         with:
           host: ${{ secrets.HOST }}
           username: ubuntu
           key: ${{ secrets.KEY }}
           script: |
-            sh /home/ubuntu/srv/ubuntu/config/scripts/deploy.sh
+            sh /home/ubuntu/config/scripts/deploy.sh

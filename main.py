@@ -1,4 +1,6 @@
 import copy
+import time
+
 from pydantic import BaseModel
 from datetime import datetime
 from db import sql_execute, connect_sql_aurora, conf_dict
@@ -215,3 +217,4 @@ def main():
 
 
     print('Hello World')
+    time.sleep(20)

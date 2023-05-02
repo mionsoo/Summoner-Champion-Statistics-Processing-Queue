@@ -219,8 +219,8 @@ def main():
     rd.set('hi', 'hello')
     rd.set('test', 'ok')
 
+    while True:
+        print('Hello World')
+        time.sleep(1)
 
-    print('Hello World')
 
-
-    time.sleep(20)

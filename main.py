@@ -4,6 +4,7 @@ import time
 from pydantic import BaseModel
 from datetime import datetime
 from db import sql_execute, connect_sql_aurora, conf_dict
+import redis
 
 
 def get_summoner_api_status(platform_id: str) -> int:
@@ -214,7 +215,12 @@ def main():
 
     # 처리 불가능 시
         # 대기
+    rd = redis.Redis(host='host.docker.internal',port=6379, db=0)
+    rd.set('hi', 'hello')
+    rd.set('test', 'ok')
 
 
     print('Hello World')
+
+
     time.sleep(20)

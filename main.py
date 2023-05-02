@@ -215,7 +215,9 @@ def main():
 
     # 처리 불가능 시
         # 대기
-    rd = redis.Redis(host='host.docker.internal',port=6379, db=0)
+
+
+    rd = redis.Redis(host='host.docker.internal', port=6379, db=0)
     rd.set('hi', 'hello')
     rd.set('test', 'ok')
 

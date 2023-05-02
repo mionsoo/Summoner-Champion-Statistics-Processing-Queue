@@ -36,7 +36,7 @@ jobs:
           key: ${{ secrets.KEY }}
           port: 22
           script: |
-            cd ~/B2C_Riot_API_Queue
+            cd ~/B2C_Deeplol_Riot_Api_Queue
             sudo git pull
             sudo docker-compose build
             sudo docker-compose down

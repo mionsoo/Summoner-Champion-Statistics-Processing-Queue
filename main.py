@@ -217,9 +217,15 @@ def main():
         # 대기
 
 
-    rd = redis.Redis(host='host.docker.internal', port=6379, decode_responses=True)
-    rd.set('hi', 'hello')
-    rd.set('test', 'ok')
+    try:
+        rd = redis.Redis(host='host.docker.internal', port=6379, decode_responses=True)
+        rd.set('hi', 'hello')
+        rd.set('test', 'ok')
+    except Exception as e:
+        with open('error.log','w') as f:
+            f.write(str(e.args))
+            f.close()
+
 
     while True:
         print('Hello World', rd.get(name='hi'), rd.get(name='test'))

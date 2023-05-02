@@ -15,7 +15,6 @@ services:
   redis1:
     image: redis
     container_name: redis_queue
-    restart: no
     ports:
       - 6379:6379
     extra_hosts:
@@ -23,7 +22,6 @@ services:
 
   grafana:
     image: grafana/grafana:latest
-    restart: no
     environment:
       - GF_INSTALL_PLUGINS=redis-datasource
     ports:

@@ -36,6 +36,10 @@ jobs:
           key: ${{ secrets.KEY }}
           script: |
             cd ~/B2C_Deeplol_Riot_Api_Queue
+            echo "API_ENV=prod" > ./.env
+            echo "AWS_ACCESS=${{ secrets.AWS_ACCESS }}" >> ./.env
+            echo "AWS_SECRET=${{ secrets.AWS_SECRET }}" >> ./.env
+            
             sudo git pull
             sudo docker-compose build
             sudo docker-compose down

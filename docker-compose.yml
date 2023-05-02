@@ -11,19 +11,10 @@ services:
       AWS_SECRET: ${AWS_SECRET}
 
   redis1:
-    image: redis:alpine
+    image: redis
     container_name: redis_queue
     ports:
       - 6379:6379
-    volumes:
-      - ./redis/data:/data
-      - ./redis/conf/redis.conf:/usr/local/conf/redis.conf
-    labels:
-      - "name=redis"
-      - "mode=standalone"
-    restart: always
-    command:
-      - redis-server /usr/local/conf/redis.conf
 
   grafana:
     image: grafana/grafana:latest

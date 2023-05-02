@@ -217,12 +217,12 @@ def main():
         # 대기
 
 
-    rd = redis.Redis(host='host.docker.internal', port=6379, db=0)
+    rd = redis.Redis(host='host.docker.internal', port=6379, decode_responses=True)
     rd.set('hi', 'hello')
     rd.set('test', 'ok')
 
     while True:
-        print('Hello World')
+        print('Hello World', rd.get(name='hi'), rd.get(name='test'))
         time.sleep(1)
 
 

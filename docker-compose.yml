@@ -4,7 +4,7 @@ services:
   queue:
     build: .
     command:
-      - python main.py
+      - ~/B2C_Deeplol_Riot_Api_Queue/python main.py
     environment:
       API_ENV: ${API_ENV}
       AWS_ACCESS: ${AWS_ACCESS}

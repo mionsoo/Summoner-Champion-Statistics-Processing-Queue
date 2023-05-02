@@ -176,6 +176,7 @@ def insert_summoner_basic_info(res: dict, platform_id: str) -> bool:
             except:
                 return Challenge()
 
+
         query = f'INSERT INTO ' \
                 f'b2c_summoner_challenges_data(' \
                 f'summoner_id, platform_id, title_id, challenge_id_1, percentile_1, level_1, value_1, ' \

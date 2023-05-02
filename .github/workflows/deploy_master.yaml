@@ -34,7 +34,6 @@ jobs:
           host: ${{ secrets.HOST }}
           username: ubuntu
           key: ${{ secrets.KEY }}
-          port: 22
           script: |
             cd ~/B2C_Deeplol_Riot_Api_Queue
             sudo git pull

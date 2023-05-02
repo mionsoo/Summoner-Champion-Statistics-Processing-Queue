@@ -228,8 +228,11 @@ def main():
 
 
     while True:
-        print('Hello World', rd.get(name='hi'), rd.get(name='test'))
-        time.sleep(1)
+        with open('stdio.log','w') as f:
+            f.write(f"Hello World, {rd.get(name='hi')}, {rd.get(name='test')}")
+            f.close()
+
+        time.sleep(10)
 
 
 if __name__ == '__main__':

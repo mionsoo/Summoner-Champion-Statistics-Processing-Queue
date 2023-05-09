@@ -9,7 +9,7 @@ from enum import IntEnum
 from dataclasses import dataclass
 import logging
 
-logging.basicConfig('example.log',level=logging.WARNING)
+logging.basicConfig(filename='example.log',level=logging.WARNING)
 
 host = 'redis_queue'
 rd = redis.Redis(host=host, port=6379, decode_responses=True)

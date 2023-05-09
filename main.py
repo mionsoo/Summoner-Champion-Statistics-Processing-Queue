@@ -7,9 +7,7 @@ import redis
 from riot import RiotV4Tier, get_json_time_limit
 from enum import IntEnum
 from dataclasses import dataclass
-import logging
 
-logging.basicConfig(filename='example.log',level=logging.WARNING)
 
 host = 'redis_queue'
 rd = redis.Redis(host=host, port=6379, decode_responses=True)
@@ -254,34 +252,34 @@ def get_current_waiting_object():
 
 
 def run():
-    logging.info('Waiting Redis Init')
+    print('Waiting Redis Init')
     for _ in range(20):
         print(_, end='\r')
         time.sleep(1)
     print('')
-    logging.info('-- Done\n')
+    print('-- Done\n')
 
     print('host', host)
     # rd.delete('error_list')
     rd.lpush('error_list', '---6nw65Cc1MX-R1G3anI0PPD2wiwVW_D8O_MED4zlQKru4/KR/league')
     rd.lpush('error_list', '---6nw65Cc1MX-R1G3anI0PPD2wiwVW_D8O_MED4zlQKru4/KR/summoner')
-    logging.info('Message Queue System Init')
-    logging.info('-- Done\n')
-    logging.info('Run Start')
+    print('Message Queue System Init')
+    print('-- Done\n')
+    print('Run Start')
 
     current_obj = None
     empty_print = True
     while True:
         if rd.llen('error_list') == 0:
             if empty_print:
-                logging.info('Queue is Empty')
+                print('Queue is Empty')
                 empty_print = False
 
         elif current_obj is None:
             empty_print = True
 
             current_obj = get_current_waiting_object()
-            logging.info(current_obj)
+            print(current_obj)
             current_obj = None
 
 

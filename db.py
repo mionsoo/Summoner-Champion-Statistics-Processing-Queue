@@ -26,6 +26,7 @@ db_pass = ssm_client.get_parameter(Name='b2c_db_pass', WithDecryption=False)['Pa
 riot_api_key = parameter['Parameter']['Value']
 
 
+
 @dataclass
 class Config:
     """

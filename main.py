@@ -1,10 +1,22 @@
 import copy
 import time
-
 from pydantic import BaseModel
 from datetime import datetime
-from db import sql_execute, connect_sql_aurora, conf_dict
+from db import sql_execute, connect_sql_aurora, conf_dict, riot_api_key
 import redis
+from riot import RiotV4Tier, get_json_time_limit
+from enum import IntEnum
+from dataclasses import dataclass
+
+host = 'redis_queue'
+rd = redis.Redis(host=host, port=6379, decode_responses=True)
+
+
+class API_TYPE(IntEnum):
+    summoner = 0
+    match = 1
+    league = 2
+
 
 
 def get_summoner_api_status(platform_id: str) -> int:
@@ -16,7 +28,8 @@ def get_summoner_api_status(platform_id: str) -> int:
     """
     conn = connect_sql_aurora()
     try:
-        query = f'select is_ok from b2c_riot_api_status{conf_dict["TABLE_STR"]} ' \
+        query = f'select is_ok ' \
+                f'from b2c_riot_api_status{conf_dict["TABLE_STR"]} ' \
                 f'where platform_id = {repr(platform_id)} and type = "summoner"'
         status = sql_execute(query, conn)[0][0]
         return status
@@ -205,35 +218,89 @@ def insert_summoner_basic_info(res: dict, platform_id: str) -> bool:
         conn.close()
 
 
-def main():
-    # 대기열 인원 체크
-
-    # 라이엇 API 상태 체크
-    # 처리 가능 시
-        # API 요청
-        # 반환 정보 DB 업데이트
-
-    # 처리 불가능 시
-        # 대기
 
 
+
+def get_api(api_type):
+    if api_type == API_TYPE.summoner:
+        pass
+    elif api_type == API_TYPE.league:
+        pass
+    elif api_type == API_TYPE.match:
+        pass
+
+
+def is_api_status_OK():
+    api = get_api()
     try:
-        rd = redis.Redis(host='host.docker.internal', port=6379, decode_responses=True)
-        rd.set('hi', 'hello')
-        rd.set('test', 'ok')
+        a = get_json_time_limit(time_limit=3)
     except Exception as e:
-        with open('error.log','w') as f:
-            f.write(str(e.args))
-            f.close()
+        return False
+    else:
+        return True
+
+@dataclass
+class ApiInfo:
+    user_info: str
+    platform_id: str
+    api_type: str
+
+def get_current_waiting_object():
+    r = rd.rpop('error_list')
+    return ApiInfo(*r.split('/'))
 
 
+def run():
+    print('Waiting Redis Init')
+    for _ in range(20):
+        print(_, end='\r')
+        time.sleep(1)
+    print('')
+    print('-- Done\n')
+
+    print('host', host)
+    # rd.delete('error_list')
+    rd.lpush('error_list', '---6nw65Cc1MX-R1G3anI0PPD2wiwVW_D8O_MED4zlQKru4/KR/league')
+    rd.lpush('error_list', '---6nw65Cc1MX-R1G3anI0PPD2wiwVW_D8O_MED4zlQKru4/KR/summoner')
+    print('Message Queue System Init')
+    print('-- Done\n')
+    print('Run Start')
+
+    current_obj = None
+    empty_print = True
     while True:
-        with open('stdio.log','w') as f:
-            f.write(f"Hello World, {rd.get(name='hi')}, {rd.get(name='test')}")
-            f.close()
+        if rd.llen('error_list') == 0:
+            if empty_print:
+                print('Queue is Empty')
+                empty_print = False
 
-        time.sleep(10)
+        elif current_obj is None:
+            empty_print = True
+
+            current_obj = get_current_waiting_object()
+            print(current_obj)
+            current_obj = None
+
+
+
+
+
+        # 대기열 인원 체크
+        # 현재 입장 대기 인원
+        # (user_info, api_type)
+
+
+        # 라이엇 API 상태 체크
+        # 처리 가능 시
+                # API 요청
+                # 반환 정보 DB 업데이트
+
+        # 처리 불가능 시
+            # 대기
 
 
 if __name__ == '__main__':
-    main()
+    run()
+
+
+

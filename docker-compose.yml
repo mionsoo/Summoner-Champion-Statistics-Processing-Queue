@@ -3,8 +3,7 @@ version: '3'
 services:
   queue:
     build: .
-    command: python3 main.py
-    restart: always
+    command: python3 -u main.py
     environment:
       API_ENV: ${API_ENV}
       AWS_ACCESS: ${AWS_ACCESS}

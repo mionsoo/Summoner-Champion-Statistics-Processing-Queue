@@ -303,7 +303,8 @@ def queue_system():
                 summoner = summoner_result.json()
                 current_obj.puu_id = summoner['puuid']
             elif is_api_status_400(summoner_result):
-                current_obj = None
+                print(summoner_result.json()['status']['message'])
+                current_obj = 1
                 continue
             else:
                 rd.rpush('error_list', current_obj.make_redis_string())

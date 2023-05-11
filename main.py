@@ -296,6 +296,13 @@ def queue_system():
             get_summoner_api_url(current_obj),
             time_limit=3
         )
+        if is_api_status_green(summoner_result):
+            summoner = summoner_result.json()
+            current_obj.puu_id = summoner['puuid']
+        else:
+            rd.rpush('error_list', current_obj.make_redis_string())
+            system_sleep(retry_after=get_max_retry_after(summoner_result))
+
 
         tier_result = get_json_time_limit(
             get_tier_api_url(current_obj),
@@ -312,7 +319,7 @@ def queue_system():
             insert_summoner_basic_info(res=res, platform_id=current_obj.platform_id)
         else:
             rd.rpush('error_list', current_obj.make_redis_string())
-            system_sleep(retry_after=get_max_retry_after(challenge_result, summoner_result, tier_result))
+            system_sleep(retry_after=get_max_retry_after(summoner_result, tier_result, challenge_result))
 
         # 현재 대기인원
         current_obj = None
@@ -329,11 +336,22 @@ def make_res(challenge_result, summoner_result, tier_result):
     return res
 
 
-def get_max_retry_after(challenge_result, summoner_result, tier_result):
-    summoner_retry_after = int(summoner_result.headers.get('Retry-After') if summoner_result.headers.get('Retry-After') else 0)
-    tier_retry_after = int(tier_result.headers.get('Retry-After') if tier_result.headers.get('Retry-After') else 0)
-    challenge_retry_after = int(challenge_result.headers.get('Retry-After') if challenge_result.headers.get('Retry-After') else 0)
-    return max([summoner_retry_after, tier_retry_after, challenge_retry_after])
+def get_max_retry_after(summoner_result={}, tier_result={}, challenge_result={}):
+    total_retry_after = [0]
+
+    if summoner_result:
+        summoner_retry_after = int(summoner_result.headers.get('Retry-After') if summoner_result.headers.get('Retry-After') else 0)
+        total_retry_after.append(summoner_retry_after)
+
+    if tier_result:
+        tier_retry_after = int(tier_result.headers.get('Retry-After') if tier_result.headers.get('Retry-After') else 0)
+        total_retry_after.append(tier_retry_after)
+
+    if challenge_result:
+        challenge_retry_after = int(challenge_result.headers.get('Retry-After') if challenge_result.headers.get('Retry-After') else 0)
+        total_retry_after.append(challenge_retry_after
+                                 )
+    return max(total_retry_after)
 
 
 def is_api_status_all_green(challenge_result, summoner_result, tier_result):

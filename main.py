@@ -242,6 +242,7 @@ def insert_summoner_basic_info(res: dict, platform_id: str) -> bool:
         sql_execute(query, conn)
 
         conn.commit()
+        print('- Data Inserted')
         return True
     except Exception as e:
         pass
@@ -281,49 +282,47 @@ def queue_system():
         if rd.llen('error_list') == 0 and empty_print:
             print('Queue is Empty')
             empty_print = False
-
-        # 대기열 인원 체크
-        if current_obj is None:
-            current_obj = get_current_waiting_object()
-            print(current_obj)
-            empty_print = True
-
-
-        current_obj = ApiInfo(summoner_id='---6nw65Cc1MX-R1G3anI0PPD2wiwVW_D8O_MED4zlQKru4',platform_id='KR',api_type='league')
-        # 라이엇 API 상태 체크
-
-        summoner_result = get_json_time_limit(
-            get_summoner_api_url(current_obj),
-            time_limit=3
-        )
-        if is_api_status_green(summoner_result):
-            summoner = summoner_result.json()
-            current_obj.puu_id = summoner['puuid']
         else:
-            rd.rpush('error_list', current_obj.make_redis_string())
-            system_sleep(retry_after=get_max_retry_after(summoner_result))
+            # 대기열 인원 체크
+            if current_obj is None:
+                current_obj = get_current_waiting_object()
+                print(current_obj)
+                empty_print = True
+
+            # 라이엇 API 상태 체크
+
+            summoner_result = get_json_time_limit(
+                get_summoner_api_url(current_obj),
+                time_limit=3
+            )
+            if is_api_status_green(summoner_result):
+                summoner = summoner_result.json()
+                current_obj.puu_id = summoner['puuid']
+            else:
+                rd.rpush('error_list', current_obj.make_redis_string())
+                system_sleep(retry_after=get_max_retry_after(summoner_result))
 
 
-        tier_result = get_json_time_limit(
-            get_tier_api_url(current_obj),
-            time_limit=3
-        )
+            tier_result = get_json_time_limit(
+                get_tier_api_url(current_obj),
+                time_limit=3
+            )
 
-        challenge_result = get_json_time_limit(
-            get_challenge_api_url(current_obj),
-            time_limit=3
-        )
+            challenge_result = get_json_time_limit(
+                get_challenge_api_url(current_obj),
+                time_limit=3
+            )
 
-        if is_api_status_all_green(challenge_result, summoner_result, tier_result):
-            res = make_res(challenge_result, summoner_result, tier_result)
-            insert_summoner_basic_info(res=res, platform_id=current_obj.platform_id)
-        else:
-            rd.rpush('error_list', current_obj.make_redis_string())
-            system_sleep(retry_after=get_max_retry_after(summoner_result, tier_result, challenge_result))
+            if is_api_status_all_green(challenge_result, summoner_result, tier_result):
+                res = make_res(challenge_result, summoner_result, tier_result)
+                insert_summoner_basic_info(res=res, platform_id=current_obj.platform_id)
+            else:
+                rd.rpush('error_list', current_obj.make_redis_string())
+                system_sleep(retry_after=get_max_retry_after(summoner_result, tier_result, challenge_result))
 
-        # 현재 대기인원
-        current_obj = None
-
+            # 현재 대기인원
+            current_obj = None
+            print('------------------------------')
 
 def make_res(challenge_result, summoner_result, tier_result):
     res = summoner_result.json()

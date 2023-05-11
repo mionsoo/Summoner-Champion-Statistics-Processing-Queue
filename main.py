@@ -272,28 +272,28 @@ def is_api_status_400(result):
 
 def get_current_waiting_object() -> ApiInfo:
     r = rd.rpop('error_list')
+    print(r)
     return ApiInfo(*r.split('/'))
 
 
 def queue_system():
-    current_obj = None
     empty_print = True
 
     while True:
         # 대기열 비어있는 경우 시스템 대기
         if rd.llen('error_list') == 0 and empty_print:
             print('Queue is Empty')
+            print('------------------------------')
             empty_print = False
 
         elif rd.llen('error_list') >= 1:
             # 대기열 인원 체크
-            if current_obj is None:
-                current_obj = get_current_waiting_object()
-                print(current_obj, rd.llen('error_list'))
-                empty_print = True
+            current_obj = get_current_waiting_object()
+            print(current_obj, rd.llen('error_list'))
+            empty_print = True
 
             # 라이엇 API 상태 체크
-            # current_obj = ApiInfo(summoner_id='---6nw65Cc1MX-R1G3anI0PPD2wiwVW_D8O_MED4zlQKru1', platform_id='KR',
+            # current_obj = ApiInfo(summoner_id='---6nw65Cc1MX-R1G3anI0PPD2wiwVW_D8O_MED4zlQKru4', platform_id='KR',
             #                       api_type='league')
 
             summoner_result = get_json_time_limit(
@@ -303,9 +303,10 @@ def queue_system():
             if is_api_status_green(summoner_result):
                 summoner = summoner_result.json()
                 current_obj.puu_id = summoner['puuid']
+
             elif is_api_status_400(summoner_result):
                 print(summoner_result.json()['status']['message'])
-                current_obj = 1
+                print('------------------------------')
                 continue
             else:
                 rd.rpush('error_list', current_obj.make_redis_string())
@@ -330,7 +331,6 @@ def queue_system():
                 system_sleep(retry_after=get_max_retry_after(summoner_result, tier_result, challenge_result))
 
             # 현재 대기인원
-            current_obj = None
             print('------------------------------')
 
 def make_res(challenge_result, summoner_result, tier_result):

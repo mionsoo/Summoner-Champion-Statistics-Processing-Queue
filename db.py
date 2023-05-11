@@ -58,7 +58,7 @@ def conf():
     환경 불러오기
     :return:
     """
-    config = dict(prod=ProdConfig)
+    config = dict(prod=ProdConfig, dev=ProdConfig)
     return config[environ.get("API_ENV", "prod")]()
 
 conf_dict = asdict(conf())

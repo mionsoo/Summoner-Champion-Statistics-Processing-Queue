@@ -41,22 +41,16 @@ def get_json_time_limit(target_url, time_limit):
     :param time_limit:
     :return:
     """
-    while True:
-        result = requests.get(url=target_url,
-                              headers={'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 '
-                                                     '(KHTML, like Gecko) Chrome/81.0.4044.138 Safari/537.36'},
-                              timeout=time_limit)
 
-        if result.status_code == 200:
-            return result.json()
-
-        elif result.status_code == 429:
-            waiting = int(result.headers['Retry-After'])
-            print(f"Because of API Limit, it will restart in {waiting}s")
-            raise Exception(f'ERROR RETRY-AFTER')
-
-        else:
-            raise Exception(f'ERROR {result.status_code}')
+    result = requests.get(
+        url=target_url,
+        headers={
+            'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 '
+                          '(KHTML, like Gecko) Chrome/81.0.4044.138 Safari/537.36'
+        },
+        timeout=time_limit
+    )
+    return result
 
 
 

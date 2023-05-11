@@ -8,6 +8,7 @@ services:
       API_ENV: ${API_ENV}
       AWS_ACCESS: ${AWS_ACCESS}
       AWS_SECRET: ${AWS_SECRET}
+      HOST: ${HOST}
     extra_hosts:
       - "host.docker.internal:host-gateway"
 

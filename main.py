@@ -1,43 +1,49 @@
 import copy
+import os
 import time
 from pydantic import BaseModel
 from datetime import datetime
 from db import sql_execute, connect_sql_aurora, conf_dict, riot_api_key
 import redis
-from riot import RiotV4Tier, get_json_time_limit
-from enum import IntEnum
+from riot import get_json_time_limit, RiotV4Tier, RiotV4Summoner, RiotV5Match, RiotV1Challenges
+from enum import Enum, auto
 from dataclasses import dataclass
 
-
-host = 'redis_queue'
+host = 'redis_queue' if os.environ["API_ENV"] == "dev" else os.environ['HOST']
 rd = redis.Redis(host=host, port=6379, decode_responses=True)
 
 
-class API_TYPE(IntEnum):
-    summoner = 0
-    match = 1
-    league = 2
+class StrEnum(str, Enum):
+    def _generate_next_value_(name, start, count, last_values):
+        return name
+
+    def __str__(self):
+        return self.name
 
 
+class API_TYPE(StrEnum):
+    summoner = auto()
+    match = auto()
+    league = auto()
 
-def get_summoner_api_status(platform_id: str) -> int:
-    """
-    riot에서 제공하는 summoner api 상태를 확인하는 함수
-    반환값이 0이면 정상, 1이면 이상
-    :param platform_id: 지역
-    :return 0 or 1:
-    """
-    conn = connect_sql_aurora()
-    try:
-        query = f'select is_ok ' \
-                f'from b2c_riot_api_status{conf_dict["TABLE_STR"]} ' \
-                f'where platform_id = {repr(platform_id)} and type = "summoner"'
-        status = sql_execute(query, conn)[0][0]
-        return status
-    except:
-        return 1
-    finally:
-        conn.close()
+
+@dataclass
+class ApiInfo:
+    '''
+    rd.lpush('error_list', '/---6nw65Cc1MX-R1G3anI0PPD2wiwVW_D8O_MED4zlQKru4////KR/league')
+
+    '''
+    summoner_name: str = ''
+    summoner_id: str = ''
+    account_id: str = ''
+    puu_id: str = ''
+    match_id: str = ''
+    platform_id: str = ''
+    api_type: str = ''
+
+    def make_redis_string(self):
+        return f'{self.summoner_name}/{self.summoner_id}/{self.account_id}/{self.puu_id}/{self.match_id}/{self.platform_id}/{self.api_type}'
+
 
 class Challenge(BaseModel):
     """
@@ -54,6 +60,28 @@ class Challenge(BaseModel):
     level: str = ""
     value: float = 0
 
+
+def get_summoner_api_status(platform_id: str) -> int:
+    """
+    riot에서 제공하는 summoner api 상태를 확인하는 함수
+    반환값이 0이면 정상, 1이면 이상
+    :param platform_id: 지역
+    :return 0 or 1:
+    """
+    conn = connect_sql_aurora()
+    try:
+        query = f'select is_ok ' \
+                f'from b2c_riot_api_status{conf_dict["TABLE_STR"]} ' \
+                f'where platform_id = {repr(platform_id)} ' \
+                f'and type = "summoner"'
+        status = sql_execute(query, conn)[0][0]
+        return status
+    except:
+        return 1
+    finally:
+        conn.close()
+
+
 def get_tier_history_table_name(month):
     if month in [1, 4, 7, 10]:
         return 'b2c_summoner_tier_history_1'
@@ -61,6 +89,7 @@ def get_tier_history_table_name(month):
         return 'b2c_summoner_tier_history_2'
     if month in [3, 6, 9, 12]:
         return 'b2c_summoner_tier_history_3'
+
 
 def get_challenge_list(challenges_data: dict) -> list:
     '''
@@ -105,6 +134,7 @@ def get_ranked_win_loss(res: dict, ranked: str) -> tuple:
             mini_wins = mini_dict.get("wins")
             mini_losses = mini_dict.get("losses")
     return wins, losses, mini_progress, mini_wins, mini_losses
+
 
 def insert_summoner_basic_info(res: dict, platform_id: str) -> bool:
     """
@@ -219,89 +249,133 @@ def insert_summoner_basic_info(res: dict, platform_id: str) -> bool:
         conn.close()
 
 
+def get_summoner_api_url(current_obj: ApiInfo):
+    summoner = RiotV4Summoner(api_key=riot_api_key, platform_id=current_obj.platform_id)
+    return summoner.get_url(summoner_id=current_obj.summoner_id)
+
+def get_tier_api_url(current_obj: ApiInfo):
+    tier = RiotV4Tier(api_key=riot_api_key, platform_id=current_obj.platform_id)
+    return tier.get_by_summoner(summoner_id=current_obj.summoner_id)
 
 
-
-def get_api(api_type):
-    if api_type == API_TYPE.summoner:
-        pass
-    elif api_type == API_TYPE.league:
-        pass
-    elif api_type == API_TYPE.match:
-        pass
+def get_challenge_api_url(current_obj: ApiInfo):
+    challenge = RiotV1Challenges(api_key=riot_api_key, platform_id=current_obj.platform_id)
+    return challenge.get_url(puu_id=current_obj.puu_id)
 
 
-def is_api_status_OK():
-    api = get_api()
-    try:
-        a = get_json_time_limit(time_limit=3)
-    except Exception as e:
-        return False
-    else:
-        return True
+def is_api_status_green(result):
+    return result.status_code == 200
 
-@dataclass
-class ApiInfo:
-    user_info: str
-    platform_id: str
-    api_type: str
 
-def get_current_waiting_object():
+def get_current_waiting_object() -> ApiInfo:
     r = rd.rpop('error_list')
     return ApiInfo(*r.split('/'))
 
 
+def queue_system():
+    current_obj = None
+    empty_print = True
+
+    while True:
+        # 대기열 비어있는 경우 시스템 대기
+        if rd.llen('error_list') == 0 and empty_print:
+            print('Queue is Empty')
+            empty_print = False
+
+        # 대기열 인원 체크
+        if current_obj is None:
+            current_obj = get_current_waiting_object()
+            print(current_obj)
+            empty_print = True
+
+
+        current_obj = ApiInfo(summoner_id='---6nw65Cc1MX-R1G3anI0PPD2wiwVW_D8O_MED4zlQKru4',platform_id='KR',api_type='league')
+        # 라이엇 API 상태 체크
+
+        summoner_result = get_json_time_limit(
+            get_summoner_api_url(current_obj),
+            time_limit=3
+        )
+
+        tier_result = get_json_time_limit(
+            get_tier_api_url(current_obj),
+            time_limit=3
+        )
+
+        challenge_result = get_json_time_limit(
+            get_challenge_api_url(current_obj),
+            time_limit=3
+        )
+
+        if is_api_status_all_green(challenge_result, summoner_result, tier_result):
+            res = make_res(challenge_result, summoner_result, tier_result)
+            insert_summoner_basic_info(res=res, platform_id=current_obj.platform_id)
+        else:
+            rd.rpush('error_list', current_obj.make_redis_string())
+            system_sleep(retry_after=get_max_retry_after(challenge_result, summoner_result, tier_result))
+
+        # 현재 대기인원
+        current_obj = None
+
+
+def make_res(challenge_result, summoner_result, tier_result):
+    res = summoner_result
+    res['challenges'] = challenge_result
+    for tier_info in tier_result:
+        if tier_info['queueType'] == 'RANKED_SOLO_5x5':
+            res['RANKED_SOLO_5x5'] = tier_info
+        elif tier_info['queueType'] == 'RANKED_FLEX_SR':
+            res['RANKED_FLEX_SR'] = tier_info
+    return res
+
+
+def get_max_retry_after(challenge_result, summoner_result, tier_result):
+    summoner_retry_after = int(summoner_result.headers.get('Retry-After') if summoner_result.headers.get('Retry-After') else 0)
+    tier_retry_after = int(tier_result.headers.get('Retry-After') if tier_result.headers.get('Retry-After') else 0)
+    challenge_retry_after = int(challenge_result.headers.get('Retry-After') if challenge_result.headers.get('Retry-After') else 0)
+    return max([summoner_retry_after, tier_retry_after, challenge_retry_after])
+
+
+def is_api_status_all_green(challenge_result, summoner_result, tier_result):
+    return is_api_status_green(summoner_result) and is_api_status_green(tier_result) and is_api_status_green(
+        challenge_result)
+
+
+def system_sleep(retry_after):
+    print(f"Because of API Limit, it will restart in {retry_after}s")
+    time.sleep(retry_after)
+
+
 def run():
+    waiting_redis_init()
+
+    print('Message Queue System Init')
+    print('-- Done\n')
+
+    print('Run Start')
+    rd.delete('error_list')
+    rd.lpush('error_list', '/---6nw65Cc1MX-R1G3anI0PPD2wiwVW_D8O_MED4zlQKru4////KR/league')
+    rd.lpush('error_list', '/---6nw65Cc1MX-R1G3anI0PPD2wiwVW_D8O_MED4zlQKru1////KR/league')
+
+    queue_system()
+
+
+def waiting_redis_init(waiting_sec=20):
     print('Waiting Redis Init')
-    for _ in range(20):
+
+    for _ in range(waiting_sec):
         print(_, end='\r')
         time.sleep(1)
+
     print('')
     print('-- Done\n')
 
-    print('host', host)
-    # rd.delete('error_list')
-    rd.lpush('error_list', '---6nw65Cc1MX-R1G3anI0PPD2wiwVW_D8O_MED4zlQKru4/KR/league')
-    rd.lpush('error_list', '---6nw65Cc1MX-R1G3anI0PPD2wiwVW_D8O_MED4zlQKru4/KR/summoner')
-    print('Message Queue System Init')
-    print('-- Done\n')
-    print('Run Start')
-
-    current_obj = None
-    empty_print = True
-    while True:
-        if rd.llen('error_list') == 0:
-            if empty_print:
-                print('Queue is Empty')
-                empty_print = False
-
-        elif current_obj is None:
-            empty_print = True
-
-            current_obj = get_current_waiting_object()
-            print(current_obj)
-            current_obj = None
-
-
-
-
-
-        # 대기열 인원 체크
-        # 현재 입장 대기 인원
-        # (user_info, api_type)
-
-
-        # 라이엇 API 상태 체크
-        # 처리 가능 시
-                # API 요청
-                # 반환 정보 DB 업데이트
-
-        # 처리 불가능 시
-            # 대기
-
 
 if __name__ == '__main__':
-    run()
+    try:
+        run()
+    except Exception as e:
+        print(e)
 
 
 

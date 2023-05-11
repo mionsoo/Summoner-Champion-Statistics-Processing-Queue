@@ -288,7 +288,7 @@ def queue_system():
             # 대기열 인원 체크
             if current_obj is None:
                 current_obj = get_current_waiting_object()
-                print(current_obj)
+                print(current_obj, rd.llen('error_list'))
                 empty_print = True
 
             # 라이엇 API 상태 체크

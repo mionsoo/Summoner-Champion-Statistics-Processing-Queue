@@ -267,6 +267,8 @@ def get_challenge_api_url(current_obj: ApiInfo):
 def is_api_status_green(result):
     return result.status_code == 200
 
+def is_api_status_400(result):
+    return result.status_code == 400
 
 def get_current_waiting_object() -> ApiInfo:
     r = rd.rpop('error_list')
@@ -290,6 +292,8 @@ def queue_system():
                 empty_print = True
 
             # 라이엇 API 상태 체크
+            current_obj = ApiInfo(summoner_id='---6nw65Cc1MX-R1G3anI0PPD2wiwVW_D8O_MED4zlQKru1', platform_id='KR',
+                                  api_type='league')
 
             summoner_result = get_json_time_limit(
                 get_summoner_api_url(current_obj),
@@ -298,6 +302,8 @@ def queue_system():
             if is_api_status_green(summoner_result):
                 summoner = summoner_result.json()
                 current_obj.puu_id = summoner['puuid']
+            elif is_api_status_400(summoner_result):
+                continue
             else:
                 rd.rpush('error_list', current_obj.make_redis_string())
                 system_sleep(retry_after=get_max_retry_after(summoner_result))

@@ -284,7 +284,8 @@ def queue_system():
         if rd.llen('error_list') == 0 and empty_print:
             print('Queue is Empty')
             empty_print = False
-        else:
+
+        elif rd.llen('error_list') >= 1:
             # 대기열 인원 체크
             if current_obj is None:
                 current_obj = get_current_waiting_object()

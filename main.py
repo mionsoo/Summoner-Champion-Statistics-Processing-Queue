@@ -326,9 +326,9 @@ def queue_system():
 
 
 def make_res(challenge_result, summoner_result, tier_result):
-    res = summoner_result
-    res['challenges'] = challenge_result
-    for tier_info in tier_result:
+    res = summoner_result.json()
+    res['challenges'] = challenge_result.json()
+    for tier_info in tier_result.json():
         if tier_info['queueType'] == 'RANKED_SOLO_5x5':
             res['RANKED_SOLO_5x5'] = tier_info
         elif tier_info['queueType'] == 'RANKED_FLEX_SR':

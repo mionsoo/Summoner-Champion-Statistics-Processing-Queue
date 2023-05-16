@@ -309,6 +309,9 @@ def queue_system():
             if is_api_status_green(summoner_result):
                 summoner = summoner_result.json()
                 current_obj.puu_id = summoner['puuid']
+                current_obj.summoner_id = summoner['id']
+                current_obj.summoner_name = summoner['name']
+                current_obj.account_id = summoner['accountId']
 
             elif is_api_status_400(summoner_result):
                 print(summoner_result.json()['status']['message'])
@@ -383,7 +386,6 @@ def run():
     waiting_redis_init()
 
     print('Message Queue System Init')
-    rd.delete('error_list')
     print('-- Done\n')
 
     print('Run Start\n\n')

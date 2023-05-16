@@ -252,7 +252,16 @@ def insert_summoner_basic_info(res: dict, platform_id: str) -> bool:
 
 def get_summoner_api_url(current_obj: ApiInfo):
     summoner = RiotV4Summoner(api_key=riot_api_key, platform_id=current_obj.platform_id)
-    return summoner.get_url(summoner_id=current_obj.summoner_id)
+
+    if current_obj.summoner_id:
+        return summoner.get_url(summoner_id=current_obj.summoner_id)
+    elif current_obj.summoner_name:
+        summoner.get_url(summoner_name=current_obj.summoner_name)
+    elif current_obj.puu_id:
+        summoner.get_url(puu_id=current_obj.puu_id)
+    else:
+        raise Exception('summoner_API: No summoner_info')
+
 
 def get_tier_api_url(current_obj: ApiInfo):
     tier = RiotV4Tier(api_key=riot_api_key, platform_id=current_obj.platform_id)
@@ -272,30 +281,27 @@ def is_api_status_400(result):
 
 def get_current_waiting_object() -> ApiInfo:
     r = rd.rpop('error_list')
-    print(r)
-    return ApiInfo(*r.split('/'))
+    current_obj = ApiInfo(*r.split('/'))
+    print(current_obj, rd.llen('error_list'))
+
+    return current_obj
 
 
 def queue_system():
-    empty_print = True
+    is_queue_is_empty_string_not_printed = True
 
     while True:
         # 대기열 비어있는 경우 시스템 대기
-        if rd.llen('error_list') == 0 and empty_print:
+        if rd.llen('error_list') == 0 and is_queue_is_empty_string_not_printed:
             print('Queue is Empty')
-            print('------------------------------')
-            empty_print = False
+            print('------------------------------\n')
+            is_queue_is_empty_string_not_printed = False
 
+        # 대기열 인원 체크
         elif rd.llen('error_list') >= 1:
-            # 대기열 인원 체크
+            is_queue_is_empty_string_not_printed = True
+
             current_obj = get_current_waiting_object()
-            print(current_obj, rd.llen('error_list'))
-            empty_print = True
-
-            # 라이엇 API 상태 체크
-            # current_obj = ApiInfo(summoner_id='---6nw65Cc1MX-R1G3anI0PPD2wiwVW_D8O_MED4zlQKru4', platform_id='KR',
-            #                       api_type='league')
-
             summoner_result = get_json_time_limit(
                 get_summoner_api_url(current_obj),
                 time_limit=3
@@ -306,7 +312,7 @@ def queue_system():
 
             elif is_api_status_400(summoner_result):
                 print(summoner_result.json()['status']['message'])
-                print('------------------------------')
+                print('------------------------------\n')
                 continue
             else:
                 rd.rpush('error_list', current_obj.make_redis_string())
@@ -331,7 +337,7 @@ def queue_system():
                 system_sleep(retry_after=get_max_retry_after(summoner_result, tier_result, challenge_result))
 
             # 현재 대기인원
-            print('------------------------------')
+            print('------------------------------\n')
 
 def make_res(challenge_result, summoner_result, tier_result):
     res = summoner_result.json()
@@ -378,11 +384,7 @@ def run():
     print('Message Queue System Init')
     print('-- Done\n')
 
-    print('Run Start')
-    rd.delete('error_list')
-    rd.lpush('error_list', '/---6nw65Cc1MX-R1G3anI0PPD2wiwVW_D8O_MED4zlQKru4////KR/league')
-    rd.lpush('error_list', '/---6nw65Cc1MX-R1G3anI0PPD2wiwVW_D8O_MED4zlQKru1////KR/league')
-
+    print('Run Start\n\n')
     queue_system()
 
 
@@ -395,6 +397,9 @@ def waiting_redis_init(waiting_sec=20):
 
     print('')
     print('-- Done\n')
+
+
+
 
 
 if __name__ == '__main__':

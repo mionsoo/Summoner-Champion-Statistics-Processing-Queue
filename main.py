@@ -315,6 +315,7 @@ def queue_system():
                 print('------------------------------\n')
                 continue
             else:
+                print(summoner_result.json())
                 rd.rpush('error_list', current_obj.make_redis_string())
                 system_sleep(retry_after=get_max_retry_after(summoner_result))
 
@@ -382,7 +383,6 @@ def run():
     waiting_redis_init()
 
     print('Message Queue System Init')
-    rd.delete('error_list')
     print('-- Done\n')
 
     print('Run Start\n\n')

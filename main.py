@@ -30,10 +30,6 @@ class API_TYPE(StrEnum):
 
 @dataclass
 class ApiInfo:
-    '''
-    rd.lpush('error_list', '/---6nw65Cc1MX-R1G3anI0PPD2wiwVW_D8O_MED4zlQKru4////KR/league')
-
-    '''
     summoner_name: str = ''
     summoner_id: str = ''
     account_id: str = ''
@@ -43,7 +39,7 @@ class ApiInfo:
     api_type: str = ''
 
     def make_redis_string(self):
-        return f'{self.summoner_name}/{self.summoner_id}/{self.account_id}/{self.puu_id}/{self.match_id}/{self.platform_id}/{self.api_type}'
+        return f'{self.summoner_name}/@#{self.summoner_id}/@#{self.account_id}/@#{self.puu_id}/@#{self.match_id}/@#{self.platform_id}/@#{self.api_type}'
 
 
 class Challenge(BaseModel):
@@ -282,7 +278,7 @@ def is_api_status_400(result):
 
 def get_current_waiting_object() -> ApiInfo:
     r = rd.rpop('error_list')
-    current_obj = ApiInfo(*r.split('/'))
+    current_obj = ApiInfo(*r.split('/@#'))
     print(current_obj, rd.llen('error_list'))
 
     return current_obj

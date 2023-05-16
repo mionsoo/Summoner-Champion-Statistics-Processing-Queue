@@ -8,6 +8,7 @@ import redis
 from riot import get_json_time_limit, RiotV4Tier, RiotV4Summoner, RiotV5Match, RiotV1Challenges
 from enum import Enum, auto
 from dataclasses import dataclass
+import requests
 
 host = 'redis_queue' if os.environ["API_ENV"] == "dev" else os.environ['HOST']
 rd = redis.Redis(host=host, port=6379, decode_responses=True)
@@ -357,18 +358,18 @@ def make_res(challenge_result, summoner_result, tier_result):
 def get_max_retry_after(summoner_result={}, tier_result={}, challenge_result={}):
     total_retry_after = [0]
 
-    if summoner_result:
+    if isinstance(summoner_result, requests.models.Response):
         summoner_retry_after = int(summoner_result.headers.get('Retry-After') if summoner_result.headers.get('Retry-After') else 0)
         total_retry_after.append(summoner_retry_after)
 
-    if tier_result:
+    if isinstance(tier_result, requests.models.Response):
         tier_retry_after = int(tier_result.headers.get('Retry-After') if tier_result.headers.get('Retry-After') else 0)
         total_retry_after.append(tier_retry_after)
 
-    if challenge_result:
+    if isinstance(challenge_result, requests.models.Response):
         challenge_retry_after = int(challenge_result.headers.get('Retry-After') if challenge_result.headers.get('Retry-After') else 0)
-        total_retry_after.append(challenge_retry_after
-                                 )
+        total_retry_after.append(challenge_retry_after)
+
     return max(total_retry_after)
 
 

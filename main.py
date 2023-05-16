@@ -383,6 +383,7 @@ def run():
     waiting_redis_init()
 
     print('Message Queue System Init')
+    rd.delete('error_list')
     print('-- Done\n')
 
     print('Run Start\n\n')

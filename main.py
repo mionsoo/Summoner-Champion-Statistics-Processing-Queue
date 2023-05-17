@@ -2,7 +2,7 @@ import copy
 import os
 import time
 from pydantic import BaseModel
-from datetime import datetime
+from datetime import datetime, timedelta
 from db import sql_execute, connect_sql_aurora, conf_dict, riot_api_key
 import redis
 from riot import get_json_time_limit, RiotV4Tier, RiotV4Summoner, RiotV5Match, RiotV1Challenges
@@ -239,7 +239,7 @@ def insert_summoner_basic_info(res: dict, platform_id: str) -> bool:
         sql_execute(query, conn)
 
         conn.commit()
-        print(f'{datetime.now()} | - Data Inserted')
+        print(f'{get_current_datetime()} | - Data Inserted')
         return True
     except Exception as e:
         pass
@@ -279,9 +279,12 @@ def is_unsearchable_response(result):
 def get_current_waiting_object() -> ApiInfo:
     r = rd.rpop('error_list')
     current_obj = ApiInfo(*r.split('/@#'))
-    print(f'{datetime.now()} | ',current_obj, rd.llen('error_list'))
+    print(f'{get_current_datetime()} | ',current_obj, rd.llen('error_list'))
 
     return current_obj
+
+def get_current_datetime():
+    return datetime.now() + timedelta(hours=9)
 
 
 def queue_system():
@@ -290,7 +293,7 @@ def queue_system():
     while True:
         # 대기열 비어있는 경우 시스템 대기
         if rd.llen('error_list') == 0 and is_queue_is_empty_string_not_printed:
-            print(f'{datetime.now()} | Queue is Empty')
+            print(f'{get_current_datetime()} | Queue is Empty')
             print('------------------------------\n')
             is_queue_is_empty_string_not_printed = False
 
@@ -312,11 +315,11 @@ def queue_system():
                 current_obj.account_id = summoner['accountId']
 
             elif is_unsearchable_response(summoner_result):
-                print(f"{datetime.now()} | {summoner_result.json()['status']['message']}")
+                print(f"{get_current_datetime()} | {summoner_result.json()['status']['message']}")
                 print('------------------------------\n')
                 continue
             else:
-                print(f"{datetime.now()} | ",summoner_result.json())
+                print(f"{get_current_datetime()} | ",summoner_result.json())
                 rd.rpush('error_list', current_obj.make_redis_string())
                 system_sleep(retry_after=get_max_retry_after(summoner_result))
 
@@ -376,7 +379,7 @@ def is_api_status_all_green(challenge_result, summoner_result, tier_result):
 
 
 def system_sleep(retry_after):
-    print(f"{datetime.now()} | Because of API Limit, it will restart in {retry_after}s")
+    print(f"{get_current_datetime()} | Because of API Limit, it will restart in {retry_after}s")
     time.sleep(retry_after)
 
 

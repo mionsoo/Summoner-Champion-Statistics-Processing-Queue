@@ -273,8 +273,8 @@ def get_challenge_api_url(current_obj: ApiInfo):
 def is_api_status_green(result):
     return result.status_code == 200
 
-def is_api_status_400(result):
-    return result.status_code == 400
+def is_unsearchable_response(result):
+    return result.status_code == 400 or result.status_code == 403 or result.status_code == 404 or result.status_code == 401
 
 def get_current_waiting_object() -> ApiInfo:
     r = rd.rpop('error_list')
@@ -299,6 +299,7 @@ def queue_system():
             is_queue_is_empty_string_not_printed = True
 
             current_obj = get_current_waiting_object()
+
             summoner_result = get_json_time_limit(
                 get_summoner_api_url(current_obj),
                 time_limit=3
@@ -310,7 +311,7 @@ def queue_system():
                 current_obj.summoner_name = summoner['name']
                 current_obj.account_id = summoner['accountId']
 
-            elif is_api_status_400(summoner_result):
+            elif is_unsearchable_response(summoner_result):
                 print(summoner_result.json()['status']['message'])
                 print('------------------------------\n')
                 continue

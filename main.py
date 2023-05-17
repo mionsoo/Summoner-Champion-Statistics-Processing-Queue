@@ -239,7 +239,7 @@ def insert_summoner_basic_info(res: dict, platform_id: str) -> bool:
         sql_execute(query, conn)
 
         conn.commit()
-        print('- Data Inserted')
+        print(f'{datetime.now()} | - Data Inserted')
         return True
     except Exception as e:
         pass
@@ -279,7 +279,7 @@ def is_unsearchable_response(result):
 def get_current_waiting_object() -> ApiInfo:
     r = rd.rpop('error_list')
     current_obj = ApiInfo(*r.split('/@#'))
-    print(current_obj, rd.llen('error_list'))
+    print(f'{datetime.now()} | ',current_obj, rd.llen('error_list'))
 
     return current_obj
 
@@ -290,7 +290,7 @@ def queue_system():
     while True:
         # 대기열 비어있는 경우 시스템 대기
         if rd.llen('error_list') == 0 and is_queue_is_empty_string_not_printed:
-            print('Queue is Empty')
+            print(f'{datetime.now()} | Queue is Empty')
             print('------------------------------\n')
             is_queue_is_empty_string_not_printed = False
 
@@ -312,11 +312,11 @@ def queue_system():
                 current_obj.account_id = summoner['accountId']
 
             elif is_unsearchable_response(summoner_result):
-                print(summoner_result.json()['status']['message'])
+                print(f"{datetime.now()} | {summoner_result.json()['status']['message']}")
                 print('------------------------------\n')
                 continue
             else:
-                print(summoner_result.json())
+                print(f"{datetime.now()} | ",summoner_result.json())
                 rd.rpush('error_list', current_obj.make_redis_string())
                 system_sleep(retry_after=get_max_retry_after(summoner_result))
 
@@ -376,7 +376,7 @@ def is_api_status_all_green(challenge_result, summoner_result, tier_result):
 
 
 def system_sleep(retry_after):
-    print(f"Because of API Limit, it will restart in {retry_after}s")
+    print(f"{datetime.now()} | Because of API Limit, it will restart in {retry_after}s")
     time.sleep(retry_after)
 
 

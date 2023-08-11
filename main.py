@@ -265,7 +265,7 @@ def is_api_status_green(result):
     return result.status_code == 200
 
 def is_unsearchable_response(result):
-    return result.status_code == 400 or result.status_code == 403 or result.status_code == 404 or result.status_code == 401
+    return result.status_code == 400 or result.status_code == 403 or result.status_code == 404 or result.status_code == 401 or result.status_code == 503
 
 def get_current_waiting_object() -> ApiInfo:
     r = rd.rpop('error_list')

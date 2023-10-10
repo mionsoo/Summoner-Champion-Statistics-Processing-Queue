@@ -163,7 +163,7 @@ def insert_summoner_basic_info(res: dict, platform_id: str) -> bool:
         ### tier_batch 테이블(b2c_summoner_tier_history_x) 업데이트
         reg_date = int(datetime.strptime(datetime.today().strftime('%Y-%m-%d 09:00:00'), '%Y-%m-%d %H:%M:%S').timestamp() - 32400)
         query = f'INSERT INTO ' \
-                f'b2c_summoner_tier_history(' \
+                f'b2c_summoner_tier_history_partitioned(' \
                 f'summoner_id, platform_id, regdate, summoner_name, tier, lp, tier_flex, lp_flex, games, wins, games_flex, wins_flex) ' \
                 f'VALUES({repr(res.get("id"))}, {repr(platform_id)}, {reg_date}, {repr(origin_name)}, {repr(rank)}, '\
                 f'{lp}, {repr(rank_flex)}, {lp_flex}, {wins + losses}, {wins}, {wins_flex + losses_flex}, {wins_flex}) ' \

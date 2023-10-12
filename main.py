@@ -133,8 +133,8 @@ def insert_summoner_basic_info(res: dict, platform_id: str) -> bool:
     """
     # season_over = get_season_over(platform_id=platform_id)
     # table_name_season = "_15" if season_over else ""
-    conn = connect_sql_aurora()
     try:
+        conn = connect_sql_aurora()
         wins, losses, mini_progress, mini_wins, mini_losses = get_ranked_win_loss(res=res, ranked="RANKED_SOLO_5x5")
         wins_flex, losses_flex, mini_progress_flex, mini_wins_flex, mini_losses_flex = \
             get_ranked_win_loss(res=res, ranked="RANKED_FLEX_SR")
@@ -283,57 +283,60 @@ def queue_system():
 
     while True:
         # 대기열 비어있는 경우 시스템 대기
-        if rd.llen('error_list') == 0 and is_queue_is_empty_string_not_printed:
-            print(f'{get_current_datetime()} | Queue is Empty')
-            print('------------------------------\n')
-            is_queue_is_empty_string_not_printed = False
-
-        # 대기열 인원 체크
-        elif rd.llen('error_list') >= 1:
-            is_queue_is_empty_string_not_printed = True
-
-            current_obj = get_current_waiting_object()
-
-            summoner_result = get_json_time_limit(
-                get_summoner_api_url(current_obj),
-                time_limit=3
-            )
-            if is_api_status_green(summoner_result):
-                summoner = summoner_result.json()
-                current_obj.puu_id = summoner['puuid']
-                current_obj.summoner_id = summoner['id']
-                current_obj.summoner_name = summoner['name']
-                current_obj.account_id = summoner['accountId']
-
-            elif is_unsearchable_response(summoner_result):
-                print(f"{get_current_datetime()} | {summoner_result.json()['status']['message']}")
+        try:
+            if rd.llen('error_list') == 0 and is_queue_is_empty_string_not_printed:
+                print(f'{get_current_datetime()} | Queue is Empty')
                 print('------------------------------\n')
-                continue
-            else:
-                print(f"{get_current_datetime()} | ",summoner_result.json())
-                rd.rpush('error_list', current_obj.make_redis_string())
-                system_sleep(retry_after=get_max_retry_after(summoner_result))
+                is_queue_is_empty_string_not_printed = False
+
+            # 대기열 인원 체크
+            elif rd.llen('error_list') >= 1:
+                is_queue_is_empty_string_not_printed = True
+
+                current_obj = get_current_waiting_object()
+
+                summoner_result = get_json_time_limit(
+                    get_summoner_api_url(current_obj),
+                    time_limit=3
+                )
+                if is_api_status_green(summoner_result):
+                    summoner = summoner_result.json()
+                    current_obj.puu_id = summoner['puuid']
+                    current_obj.summoner_id = summoner['id']
+                    current_obj.summoner_name = summoner['name']
+                    current_obj.account_id = summoner['accountId']
+
+                elif is_unsearchable_response(summoner_result):
+                    print(f"{get_current_datetime()} | {summoner_result.json()['status']['message']}")
+                    print('------------------------------\n')
+                    continue
+                else:
+                    print(f"{get_current_datetime()} | ",summoner_result.json())
+                    rd.rpush('error_list', current_obj.make_redis_string())
+                    system_sleep(retry_after=get_max_retry_after(summoner_result))
 
 
-            tier_result = get_json_time_limit(
-                get_tier_api_url(current_obj),
-                time_limit=3
-            )
+                tier_result = get_json_time_limit(
+                    get_tier_api_url(current_obj),
+                    time_limit=3
+                )
 
-            challenge_result = get_json_time_limit(
-                get_challenge_api_url(current_obj),
-                time_limit=3
-            )
+                challenge_result = get_json_time_limit(
+                    get_challenge_api_url(current_obj),
+                    time_limit=3
+                )
 
-            if is_api_status_all_green(challenge_result, summoner_result, tier_result):
-                res = make_res(challenge_result, summoner_result, tier_result)
-                insert_summoner_basic_info(res=res, platform_id=current_obj.platform_id)
-            else:
-                rd.rpush('error_list', current_obj.make_redis_string())
-                system_sleep(retry_after=get_max_retry_after(summoner_result, tier_result, challenge_result))
+                if is_api_status_all_green(challenge_result, summoner_result, tier_result):
+                    res = make_res(challenge_result, summoner_result, tier_result)
+                    insert_summoner_basic_info(res=res, platform_id=current_obj.platform_id)
+                else:
+                    rd.rpush('error_list', current_obj.make_redis_string())
+                    system_sleep(retry_after=get_max_retry_after(summoner_result, tier_result, challenge_result))
 
-            # 현재 대기인원
-            print('------------------------------\n')
+                # 현재 대기인원
+                print('------------------------------\n')
+        except Exception as e:
+            print(e)
 
 def make_res(challenge_result, summoner_result, tier_result):
     res = summoner_result.json()

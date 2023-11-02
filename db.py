@@ -89,7 +89,7 @@ def connect_sql_aurora(instance_type: RDS_INSTANCE_TYPE):
     host_url = get_rds_instance_host(instance_type)
 
     conn = pymysql.connect(
-        host=conf_dict.get('AURORA_HOST'),
+        host=host_url,
         user='dbmasteruser', password=db_pass, db=conf_dict.get('AURORA_DB'), charset='utf8mb4')
 
     return conn

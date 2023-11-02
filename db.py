@@ -53,6 +53,8 @@ class ProdConfig(Config):
     ALLOW_SITE = ["*"]
     MYSQL_HOST: str = '172.31.10.236'
     AURORA_HOST: str = 'b2c-deeplol.cluster-clnwhi0hsaib.ap-northeast-2.rds.amazonaws.com'
+    AURORA_READ_HOST: str = 'b2c-deeplol-p-cluster.cluster-ro-clnwhi0hsaib.ap-northeast-2.rds.amazonaws.com'
+    AURORA_WRITE_HOST: str = 'b2c-deeplol-p-cluster.cluster-clnwhi0hsaib.ap-northeast-2.rds.amazonaws.com'
     AURORA_DB: str = 'deeplol'
     # DOMAIN: str = 'https://renew.deeplol.gg'
     DOMAIN: str = 'http://host.docker.internal'

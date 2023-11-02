@@ -1,6 +1,7 @@
 import copy
 import os
 import time
+import traceback
 from pydantic import BaseModel
 from datetime import datetime, timedelta
 from db import sql_execute, connect_sql_aurora, conf_dict, riot_api_key, RDS_INSTANCE_TYPE
@@ -336,7 +337,7 @@ def queue_system():
                 # 현재 대기인원
                 print('------------------------------\n')
         except Exception as e:
-            print(e)
+            print(traceback.format_exc())
 
 def make_res(challenge_result, summoner_result, tier_result):
     res = summoner_result.json()

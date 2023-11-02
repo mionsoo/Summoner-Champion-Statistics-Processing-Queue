@@ -26,6 +26,13 @@ db_pass = ssm_client.get_parameter(Name='b2c_db_pass', WithDecryption=False)['Pa
 riot_api_key = parameter['Parameter']['Value']
 
 
+@dataclass
+class RDS_INSTANCE_TYPE:
+    READ = 'READ'
+    WRITE = 'WRITE'
+    PLAIN = 'PLAIN'
+
+
 
 @dataclass
 class Config:
@@ -64,11 +71,23 @@ def conf():
 conf_dict = asdict(conf())
 
 
-def connect_sql_aurora():
+def get_rds_instance_host(instance_type: RDS_INSTANCE_TYPE):
+    if instance_type == RDS_INSTANCE_TYPE.READ:
+        return conf_dict.get('AURORA_READ_HOST')
+    elif instance_type == RDS_INSTANCE_TYPE.WRITE:
+        return conf_dict.get('AURORA_WRITE_HOST')
+    elif instance_type == RDS_INSTANCE_TYPE.PLAIN:
+        return conf_dict.get('AURORA_HOST')
+    else:
+        raise Exception('Wrong RDS INSTANCE TYPE')
+
+def connect_sql_aurora(instance_type: RDS_INSTANCE_TYPE):
     '''
     메인 db 커서
     :return:
     '''
+    host_url = get_rds_instance_host(instance_type)
+
     conn = pymysql.connect(
         host=conf_dict.get('AURORA_HOST'),
         user='dbmasteruser', password=db_pass, db=conf_dict.get('AURORA_DB'), charset='utf8mb4')

@@ -3,7 +3,7 @@ import os
 import time
 from pydantic import BaseModel
 from datetime import datetime, timedelta
-from db import sql_execute, connect_sql_aurora, conf_dict, riot_api_key
+from db import sql_execute, connect_sql_aurora, conf_dict, riot_api_key, RDS_INSTANCE_TYPE
 import redis
 from riot import get_json_time_limit, RiotV4Tier, RiotV4Summoner, RiotV5Match, RiotV1Challenges
 from enum import Enum, auto
@@ -65,7 +65,7 @@ def get_summoner_api_status(platform_id: str) -> int:
     :param platform_id: 지역
     :return 0 or 1:
     """
-    conn = connect_sql_aurora()
+    conn = connect_sql_aurora(RDS_INSTANCE_TYPE.READ)
     try:
         query = f'select is_ok ' \
                 f'from b2c_riot_api_status{conf_dict["TABLE_STR"]} ' \
@@ -134,7 +134,7 @@ def insert_summoner_basic_info(res: dict, platform_id: str) -> bool:
     # season_over = get_season_over(platform_id=platform_id)
     # table_name_season = "_15" if season_over else ""
     try:
-        conn = connect_sql_aurora()
+        conn = connect_sql_aurora(RDS_INSTANCE_TYPE.WRITE)
         wins, losses, mini_progress, mini_wins, mini_losses = get_ranked_win_loss(res=res, ranked="RANKED_SOLO_5x5")
         wins_flex, losses_flex, mini_progress_flex, mini_wins_flex, mini_losses_flex = \
             get_ranked_win_loss(res=res, ranked="RANKED_FLEX_SR")

@@ -161,6 +161,9 @@ def insert_summoner_basic_info(res: dict, platform_id: str) -> bool:
         except:
             challenge_list = []
 
+        if tier == 'unranked' and tier_flex == 'unranked':
+            return True
+
         ### tier_batch 테이블(b2c_summoner_tier_history_x) 업데이트
         reg_date = int(datetime.strptime(datetime.today().strftime('%Y-%m-%d 09:00:00'), '%Y-%m-%d %H:%M:%S').timestamp() - 32400)
         query = f'INSERT INTO ' \

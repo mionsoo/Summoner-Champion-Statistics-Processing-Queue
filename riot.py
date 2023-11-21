@@ -294,3 +294,17 @@ class RiotV1Challenges(RiotV4):
                      f'{puu_id}?api_key={self.__api_key}'
 
         return target_url
+
+class RiotV1Accounts:
+    def __init__(self, api_key):
+        self.__api_key = api_key
+
+    def get_url_by_name_tag(self, game_name, tag_line):
+        target_url = f'https://asia.api.riotgames.com/riot/account/v1/accounts/by-riot-id/' \
+                     f'{game_name}/{tag_line}?api_key={self.__api_key}'
+
+        return target_url
+
+    def get_url_by_puu_id(self, puu_id):
+        target_url = f'https://asia.api.riotgames.com/riot/account/v1/accounts/by-puuid/{puu_id}?api_key={self.__api_key}'
+        return target_url

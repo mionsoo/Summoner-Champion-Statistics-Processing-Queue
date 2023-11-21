@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from datetime import datetime, timedelta
 from db import sql_execute, connect_sql_aurora, conf_dict, riot_api_key, RDS_INSTANCE_TYPE
 import redis
-from riot import get_json_time_limit, RiotV4Tier, RiotV4Summoner, RiotV5Match, RiotV1Challenges
+from riot import get_json_time_limit, RiotV4Tier, RiotV4Summoner, RiotV1Accounts, RiotV1Challenges
 from enum import Enum, auto
 from dataclasses import dataclass
 import requests
@@ -125,21 +125,26 @@ def get_ranked_win_loss(res: dict, ranked: str) -> tuple:
     return wins, losses, mini_progress, mini_wins, mini_losses
 
 
-def insert_summoner_basic_info(res: dict, platform_id: str) -> bool:
+def insert_summoner_basic_info(res: dict, platform_id: str, ) -> bool:
     """
     소환사의 기본 정보를 DB에 입력 또는 업데이트하는 함수
     :param res:
     :param platform_id:
     :return:
+
+    Args:
+        riot_id_name:
+        riot_id_tag_line:
     """
-    # season_over = get_season_over(platform_id=platform_id)
     # table_name_season = "_15" if season_over else ""
+    conn = connect_sql_aurora(RDS_INSTANCE_TYPE.WRITE)
     try:
-        conn = connect_sql_aurora(RDS_INSTANCE_TYPE.WRITE)
+        riot_id_name = copy.deepcopy(res['riot_id_name']).replace('%20', '').replace(' ', '').replace("\xa0", "").lower()
+        riot_id = f"{riot_id_name}#{res['riot_id_tag_line']}"
         wins, losses, mini_progress, mini_wins, mini_losses = get_ranked_win_loss(res=res, ranked="RANKED_SOLO_5x5")
         wins_flex, losses_flex, mini_progress_flex, mini_wins_flex, mini_losses_flex = \
             get_ranked_win_loss(res=res, ranked="RANKED_FLEX_SR")
-        summoner_name = copy.deepcopy(res.get("name")).replace('%20', '').replace(' ', '').replace("\xa0", "").lower()
+        summoner_name = copy.deepcopy(res['name']).replace('%20', '').replace(' ', '').replace("\xa0", "").lower()
         tier = res.get("RANKED_SOLO_5x5")['tier'] if res.get("RANKED_SOLO_5x5") else 'unranked'
         division = res.get("RANKED_SOLO_5x5")['rank'] if res.get("RANKED_SOLO_5x5") else ''
         lp = res.get("RANKED_SOLO_5x5")['leaguePoints'] if res.get("RANKED_SOLO_5x5") else 0
@@ -149,8 +154,10 @@ def insert_summoner_basic_info(res: dict, platform_id: str) -> bool:
         lp_flex = res.get("RANKED_FLEX_SR")['leaguePoints'] if res.get("RANKED_FLEX_SR") else 0
         rank_flex = tier_flex if tier_flex in (
             'CHALLENGER', "GRANDMASTER", "MASTER", "unranked") else f"{tier_flex} {division_flex}"
+
         utf_name = str(summoner_name.encode("utf-8"))
-        origin_name = summoner_name if r'\xa0' in repr(res.get("name")) else res.get("name")
+        origin_name = summoner_name if r'\xa0' in repr(riot_id) else res.get('name')
+
         challenges_data = res.get("challenges")
         try:
             challenges_title = int(challenges_data.get("preferences")['title'])
@@ -161,33 +168,35 @@ def insert_summoner_basic_info(res: dict, platform_id: str) -> bool:
         except:
             challenge_list = []
 
-        if tier != 'unranked' or tier_flex != 'unranked':
-            reg_date = int(datetime.strptime(datetime.today().strftime('%Y-%m-%d 09:00:00'), '%Y-%m-%d %H:%M:%S').timestamp() - 32400)
+        ### tier_batch 테이블(b2c_summoner_tier_history) 업데이트
+        if tier == 'unranked' and tier_flex == 'unranked':
+            pass
+        else:
+            reg_date = (round(round(datetime.now(timezone('Asia/Seoul')).timestamp()) / (3600 * 24)) * (3600 * 24))
             query = f'INSERT INTO ' \
-                    f'b2c_summoner_tier_history_partitioned(' \
+                    f'b2c_summoner_tier_history_partitioned{conf_dict["TABLE_STR"]}(' \
                     f'summoner_id, platform_id, regdate, summoner_name, tier, lp, tier_flex, lp_flex, games, wins, games_flex, wins_flex) ' \
-                    f'VALUES({repr(res.get("id"))}, {repr(platform_id)}, {reg_date}, {repr(origin_name)}, {repr(rank)}, '\
+                    f'VALUES({repr(res.get("id"))}, {repr(platform_id)}, {reg_date}, {repr(origin_name)}, {repr(rank)}, ' \
                     f'{lp}, {repr(rank_flex)}, {lp_flex}, {wins + losses}, {wins}, {wins_flex + losses_flex}, {wins_flex}) ' \
-                    f'ON DUPLICATE KEY UPDATE summoner_name = {repr(origin_name)}, tier = {repr(rank)}, lp = {lp}, '\
-                    f'tier_flex = {repr(rank_flex)}, lp_flex = {lp_flex}, games = {wins + losses}, wins = {wins}, '\
+                    f'ON DUPLICATE KEY UPDATE summoner_name = {repr(origin_name)}, tier = {repr(rank)}, lp = {lp}, ' \
+                    f'tier_flex = {repr(rank_flex)}, lp_flex = {lp_flex}, games = {wins + losses}, wins = {wins}, ' \
                     f'games_flex = {wins_flex + losses_flex}, wins_flex = {wins_flex}'
-
             sql_execute(query, conn)
-
+        ##
 
         query = f'INSERT INTO ' \
-                f'b2c_summoner_basic_data_utf(' \
+                f'b2c_summoner_basic_data_utf{conf_dict["TABLE_STR"]}(' \
                 f'summoner_id, platform_id, summoner_name, summoner_name_utf, summoner_name_origin, wins, losses, ' \
                 f'wins_flex, losses_flex, icon_id, puu_id, summoner_level, ' \
                 f'mini_series_progress, mini_series_wins, mini_series_losses, ' \
                 f'mini_series_progress_flex, mini_series_wins_flex, mini_series_losses_flex, ' \
-                f'tier, lp, tier_flex, lp_flex) ' \
+                f'tier, lp, tier_flex, lp_flex, riot_id_name, riot_id_tag_line) ' \
                 f'VALUES({repr(res.get("id"))}, {repr(platform_id)}, {repr(summoner_name)}, {repr(utf_name)}, ' \
                 f'{repr(origin_name)}, ' \
                 f'{wins}, {losses}, {wins_flex}, {losses_flex}, {res.get("profileIconId")}, {repr(res.get("puuid"))}, ' \
                 f'{res.get("summonerLevel")}, {repr(mini_progress)}, {mini_wins}, {mini_losses}, ' \
                 f'{repr(mini_progress_flex)}, {mini_wins_flex}, {mini_losses_flex}, ' \
-                f'{repr(rank)}, {lp}, {repr(rank_flex)}, {lp_flex}) ' \
+                f'{repr(rank)}, {lp}, {repr(rank_flex)}, {lp_flex}, {repr(riot_id_name)}, {repr(riot_id_tag_line)}) ' \
                 f'ON DUPLICATE KEY UPDATE summoner_name = {repr(summoner_name)}, summoner_name_utf = {repr(utf_name)}, ' \
                 f'summoner_name_origin = {repr(origin_name)}, ' \
                 f'wins = {wins}, losses = {losses}, ' \
@@ -196,7 +205,8 @@ def insert_summoner_basic_info(res: dict, platform_id: str) -> bool:
                 f'mini_series_progress = {repr(mini_progress)}, mini_series_wins = {mini_wins}, mini_series_losses = {mini_losses}, ' \
                 f'mini_series_progress_flex = {repr(mini_progress_flex)}, mini_series_wins_flex = {mini_wins_flex}, ' \
                 f'mini_series_losses_flex = {mini_losses_flex}, ' \
-                f'tier = {repr(rank)}, lp = {lp}, tier_flex = {repr(rank_flex)}, lp_flex = {lp_flex}'
+                f'tier = {repr(rank)}, lp = {lp}, tier_flex = {repr(rank_flex)}, lp_flex = {lp_flex}, ' \
+                f'riot_id_name = {repr(riot_id_name)}, riot_id_tag_line = {repr(riot_id_tag_line)}'
 
         sql_execute(query, conn)
 
@@ -212,9 +222,8 @@ def insert_summoner_basic_info(res: dict, platform_id: str) -> bool:
             except:
                 return Challenge()
 
-
         query = f'INSERT INTO ' \
-                f'b2c_summoner_challenges_data(' \
+                f'b2c_summoner_challenges_data{conf_dict["TABLE_STR"]}(' \
                 f'summoner_id, platform_id, title_id, challenge_id_1, percentile_1, level_1, value_1, ' \
                 f'challenge_id_2, percentile_2, level_2, value_2, challenge_id_3, percentile_3, level_3, value_3) ' \
                 f'VALUES({repr(res.get("id"))}, {repr(platform_id)}, {challenges_title}, ' \
@@ -231,10 +240,9 @@ def insert_summoner_basic_info(res: dict, platform_id: str) -> bool:
         sql_execute(query, conn)
 
         conn.commit()
-        print(f'{get_current_datetime()} | - Data Inserted')
         return True
     except Exception as e:
-        pass
+        raise SqlFailureEx(ex=str(traceback.format_exc()))
     finally:
         conn.close()
 
@@ -260,6 +268,10 @@ def get_tier_api_url(current_obj: ApiInfo):
 def get_challenge_api_url(current_obj: ApiInfo):
     challenge = RiotV1Challenges(api_key=riot_api_key, platform_id=current_obj.platform_id)
     return challenge.get_url(puu_id=current_obj.puu_id)
+
+def get_account_api_url(current_obj: ApiInfo):
+    account = RiotV1Accounts(api_key=riot_api_key)
+    return account.get_url_by_puu_id(puu_id=current_obj.puu_id)
 
 
 def is_api_status_green(result):
@@ -298,7 +310,7 @@ def queue_system():
 
                 summoner_result = get_json_time_limit(
                     get_summoner_api_url(current_obj),
-                    time_limit=3
+                    time_limit=10
                 )
                 if is_api_status_green(summoner_result):
                     summoner = summoner_result.json()
@@ -319,17 +331,23 @@ def queue_system():
 
                 tier_result = get_json_time_limit(
                     get_tier_api_url(current_obj),
-                    time_limit=3
+                    time_limit=10
                 )
 
                 challenge_result = get_json_time_limit(
                     get_challenge_api_url(current_obj),
-                    time_limit=3
+                    time_limit=10
+                )
+                account_result = get_json_time_limit(
+                    get_account_api_url(current_obj),
+                    time_limit=10
                 )
 
                 if is_api_status_all_green(challenge_result, summoner_result, tier_result):
-                    res = make_res(challenge_result, summoner_result, tier_result)
-                    insert_summoner_basic_info(res=res, platform_id=current_obj.platform_id)
+                    res = make_res(challenge_result, summoner_result, tier_result, account_result)
+                    if res is not None:
+                        insert_summoner_basic_info(res=res, platform_id=current_obj.platform_id)
+                        print('No Account v1 Response  (gameName, tagLine)')
                 else:
                     rd.rpush('error_list', current_obj.make_redis_string())
                     system_sleep(retry_after=get_max_retry_after(summoner_result, tier_result, challenge_result))
@@ -339,7 +357,7 @@ def queue_system():
         except Exception as e:
             print(traceback.format_exc())
 
-def make_res(challenge_result, summoner_result, tier_result):
+def make_res(challenge_result, summoner_result, tier_result, account_result):
     res = summoner_result.json()
     res['challenges'] = challenge_result.json()
     for tier_info in tier_result.json():
@@ -347,6 +365,11 @@ def make_res(challenge_result, summoner_result, tier_result):
             res['RANKED_SOLO_5x5'] = tier_info
         elif tier_info['queueType'] == 'RANKED_FLEX_SR':
             res['RANKED_FLEX_SR'] = tier_info
+    account_json = account_result.json()
+    if account_result.get('gameName') is None and account_result.get('tagLine') is None:
+        return None
+    res['riot_id_name'] = account_json.get('gameName')
+    res['riot_id_tag_line'] = account_json.get('tagLine')
     return res
 
 

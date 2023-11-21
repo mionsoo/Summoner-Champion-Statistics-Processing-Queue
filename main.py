@@ -198,7 +198,7 @@ def insert_summoner_basic_info(res: dict, platform_id: str, ) -> bool:
                 f'{wins}, {losses}, {wins_flex}, {losses_flex}, {res.get("profileIconId")}, {repr(res.get("puuid"))}, ' \
                 f'{res.get("summonerLevel")}, {repr(mini_progress)}, {mini_wins}, {mini_losses}, ' \
                 f'{repr(mini_progress_flex)}, {mini_wins_flex}, {mini_losses_flex}, ' \
-                f'{repr(rank)}, {lp}, {repr(rank_flex)}, {lp_flex}, {repr(riot_id_name)}, {repr(riot_id_tag_line)}) ' \
+                f'{repr(rank)}, {lp}, {repr(rank_flex)}, {lp_flex}, {repr(riot_id_name)}, {repr(res["riot_id_tag_line"])}) ' \
                 f'ON DUPLICATE KEY UPDATE summoner_name = {repr(summoner_name)}, summoner_name_utf = {repr(utf_name)}, ' \
                 f'summoner_name_origin = {repr(origin_name)}, ' \
                 f'wins = {wins}, losses = {losses}, ' \
@@ -208,7 +208,7 @@ def insert_summoner_basic_info(res: dict, platform_id: str, ) -> bool:
                 f'mini_series_progress_flex = {repr(mini_progress_flex)}, mini_series_wins_flex = {mini_wins_flex}, ' \
                 f'mini_series_losses_flex = {mini_losses_flex}, ' \
                 f'tier = {repr(rank)}, lp = {lp}, tier_flex = {repr(rank_flex)}, lp_flex = {lp_flex}, ' \
-                f'riot_id_name = {repr(riot_id_name)}, riot_id_tag_line = {repr(riot_id_tag_line)}'
+                f'riot_id_name = {repr(riot_id_name)}, riot_id_tag_line = {repr(res["riot_id_tag_line"])}'
 
         sql_execute(query, conn)
 

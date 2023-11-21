@@ -244,7 +244,7 @@ def insert_summoner_basic_info(res: dict, platform_id: str, ) -> bool:
         conn.commit()
         return True
     except Exception as e:
-        raise SqlFailureEx(ex=str(traceback.format_exc()))
+        pass
     finally:
         conn.close()
 

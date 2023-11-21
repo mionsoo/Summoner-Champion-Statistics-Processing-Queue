@@ -31,7 +31,8 @@ class API_TYPE(StrEnum):
 
 @dataclass
 class ApiInfo:
-    summoner_name: str = ''
+    riot_id_name: str = ''
+    riot_id_tag_line: str = ''
     summoner_id: str = ''
     account_id: str = ''
     puu_id: str = ''
@@ -40,7 +41,7 @@ class ApiInfo:
     api_type: str = ''
 
     def make_redis_string(self):
-        return f'{self.summoner_name}/@#{self.summoner_id}/@#{self.account_id}/@#{self.puu_id}/@#{self.match_id}/@#{self.platform_id}/@#{self.api_type}'
+        return f'{self.riot_id_name}/@#{self.riot_id_tag_line}/@#{self.summoner_id}/@#{self.account_id}/@#{self.puu_id}/@#{self.match_id}/@#{self.platform_id}/@#{self.api_type}'
 
 
 class Challenge(BaseModel):

@@ -367,7 +367,7 @@ def make_res(challenge_result, summoner_result, tier_result, account_result):
         elif tier_info['queueType'] == 'RANKED_FLEX_SR':
             res['RANKED_FLEX_SR'] = tier_info
     account_json = account_result.json()
-    if account_result.get('gameName') is None and account_result.get('tagLine') is None:
+    if account_json.get('gameName') is None and account_json.get('tagLine') is None:
         return None
     res['riot_id_name'] = account_json.get('gameName')
     res['riot_id_tag_line'] = account_json.get('tagLine')

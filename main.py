@@ -255,8 +255,6 @@ def get_summoner_api_url(current_obj: ApiInfo):
 
     if current_obj.summoner_id:
         return summoner.get_url(summoner_id=current_obj.summoner_id)
-    elif current_obj.summoner_name:
-        return summoner.get_url(summoner_name=current_obj.summoner_name)
     elif current_obj.puu_id:
         return summoner.get_url(puu_id=current_obj.puu_id)
     else:

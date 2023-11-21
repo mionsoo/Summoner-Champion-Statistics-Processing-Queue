@@ -242,6 +242,7 @@ def insert_summoner_basic_info(res: dict, platform_id: str, ) -> bool:
         sql_execute(query, conn)
 
         conn.commit()
+        print(f'{get_current_datetime()} | - Data Inserted')
         return True
     except Exception as e:
         pass

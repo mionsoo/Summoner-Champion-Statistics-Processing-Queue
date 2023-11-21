@@ -9,6 +9,7 @@ import redis
 from riot import get_json_time_limit, RiotV4Tier, RiotV4Summoner, RiotV1Accounts, RiotV1Challenges
 from enum import Enum, auto
 from dataclasses import dataclass
+from pytz import timezone
 import requests
 
 host = 'redis_queue' if os.environ["API_ENV"] == "dev" else os.environ['HOST']

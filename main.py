@@ -354,7 +354,7 @@ def queue_system():
                     res = make_res(challenge_result, summoner_result, tier_result, account_result)
                     if res is not None:
                         insert_summoner_basic_info(res=res, platform_id=current_obj.platform_id)
-                        print('No Account v1 Response  (gameName, tagLine)')
+                    print('No Account v1 Response  (gameName, tagLine)')
                 else:
                     rd.rpush('error_list', current_obj.make_redis_string())
                     system_sleep(retry_after=get_max_retry_after(summoner_result, tier_result, challenge_result))

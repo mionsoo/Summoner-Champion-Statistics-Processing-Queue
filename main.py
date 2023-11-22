@@ -15,6 +15,8 @@ import requests
 host = 'redis_queue' if os.environ["API_ENV"] == "dev" else os.environ['HOST']
 rd = redis.Redis(host=host, port=6379, decode_responses=True)
 
+SERVER_NOT_WORKING = ['VN2', 'TW2']
+
 
 class StrEnum(str, Enum):
     def _generate_next_value_(name, start, count, last_values):
@@ -343,8 +345,12 @@ def queue_system():
                     get_account_api_url(current_obj),
                     time_limit=10
                 )
+                if current_obj.platform_id in SERVER_NOT_WORKING:
+                    print('SERVER_NOT_WORKING')
+                    print(f'current server: {current_obj.platform_id}')
+                    print(f'{tier_result.json()}')
 
-                if is_api_status_all_green(challenge_result, summoner_result, tier_result):
+                elif is_api_status_all_green(challenge_result, summoner_result, tier_result):
                     res = make_res(challenge_result, summoner_result, tier_result, account_result)
                     if res is not None:
                         insert_summoner_basic_info(res=res, platform_id=current_obj.platform_id)

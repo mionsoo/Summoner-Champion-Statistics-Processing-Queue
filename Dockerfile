@@ -1,12 +1,12 @@
 # ------------------------------------------------------------------------------
 # Base image
 # ------------------------------------------------------------------------------
-FROM python:3.8-slim
+FROM python:3.11-slim
 
 # ------------------------------------------------------------------------------
 # Install dependencies
 # ------------------------------------------------------------------------------
-FROM python:3.8-slim AS deps
+FROM python:3.11-slim AS deps
 
 # RUN apt-get update && apt-get install -y git && apt-get install -y python3-h5py
 RUN apt-get update && apt-get install -y git
@@ -20,7 +20,7 @@ RUN apt update > /dev/null && \
 # ------------------------------------------------------------------------------
 # Final image
 # ------------------------------------------------------------------------------
-FROM python:3.8-slim
+FROM python:3.11-slim
 WORKDIR /usr/src/app
 COPY . /usr/src/app
 

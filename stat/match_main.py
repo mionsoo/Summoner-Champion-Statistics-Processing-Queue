@@ -4,9 +4,9 @@ import time
 import traceback
 from pydantic import BaseModel
 from datetime import datetime, timedelta
-from db import sql_execute, connect_sql_aurora, conf_dict, riot_api_key, RDS_INSTANCE_TYPE
+from common.db import sql_execute, connect_sql_aurora, conf_dict, riot_api_key, RDS_INSTANCE_TYPE
 import redis
-from riot import get_json_time_limit, RiotV4Tier, RiotV4Summoner, RiotV1Accounts, RiotV1Challenges
+from common.riot import get_json_time_limit, RiotV4Tier, RiotV4Summoner, RiotV1Accounts, RiotV1Challenges
 from enum import Enum, auto
 from dataclasses import dataclass
 from pytz import timezone
@@ -65,7 +65,7 @@ class Challenge(BaseModel):
 
 def get_summoner_api_status(platform_id: str) -> int:
     """
-    riot에서 제공하는 summoner api 상태를 확인하는 함수
+    riot에서 제공하는 tier api 상태를 확인하는 함수
     반환값이 0이면 정상, 1이면 이상
     :param platform_id: 지역
     :return 0 or 1:
@@ -75,7 +75,7 @@ def get_summoner_api_status(platform_id: str) -> int:
         query = f'select is_ok ' \
                 f'from b2c_riot_api_status{conf_dict["TABLE_STR"]} ' \
                 f'where platform_id = {repr(platform_id)} ' \
-                f'and type = "summoner"'
+                f'and type = "tier"'
         status = sql_execute(query, conn)[0][0]
         return status
     except:

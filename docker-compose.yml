@@ -1,28 +1,54 @@
 version: '3'
 
 services:
-  queue:
+  tier_queue:
     build: .
-    command: python3 -u main.py
+    restart: on-failure
+    command: python3 -u /tier/main.py
     environment:
       API_ENV: ${API_ENV}
       AWS_ACCESS: ${AWS_ACCESS}
       AWS_SECRET: ${AWS_SECRET}
       HOST: ${HOST}
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+
+  stat_summoner_queue:
+    build: .
+    command: python3 -u /stat/summoner_main.py
+    environment:
+      API_ENV: ${API_ENV}
+      AWS_ACCESS: ${AWS_ACCESS}
+      AWS_SECRET: ${AWS_SECRET}
+
+  stat_match_queue:
+    build: .
+    command: python3 -u /stat/match_main.py
+    environment:
+      API_ENV: ${API_ENV}
+      AWS_ACCESS: ${AWS_ACCESS}
+      AWS_SECRET: ${AWS_SECRET}
 
   redis1:
     image: redis
+    restart: on-failure
     container_name: redis_queue
     ports:
       - 6379:6379
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
-  grafana:
-    image: grafana/grafana:latest
-    environment:
-      - GF_INSTALL_PLUGINS=redis-datasource
-    ports:
-      - 3000:3000
+#  grafana:
+#    image: grafana/grafana:latest
+#    environment:
+#      - GF_INSTALL_PLUGINS=redis-datasource
+#    ports:
+#      - 3000:3000
+
+#  database:
+#    image: mysql:8.0
+#    restart: on-failure
+#    ports:
+#      - 3306:3306
+#    command: --init-file init.sql
+#    volumes:
+#      - ./db/mysql/data: /var/lib/mysql
+#      - ./db/mysql/init: /docker-entrypoint-initdb.d

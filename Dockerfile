@@ -15,8 +15,8 @@ RUN apt-get update && apt-get install -y git
 COPY requirements.txt ./
 
 
-RUN apt update > /dev/null && \
-        pip install --disable-pip-version-check -r requirements.txt
+#RUN apt update > /dev/null && \
+#        pip install --disable-pip-version-check -r requirements.txt
 
 # ------------------------------------------------------------------------------
 # Final image

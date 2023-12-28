@@ -54,7 +54,8 @@ def queue_system():
 
         except Exception as e:
             print(traceback.format_exc())
-
+        finally:
+            conn.close()
 
 def run():
     pass

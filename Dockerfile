@@ -13,8 +13,9 @@ RUN apt-get update && apt-get install -y git
 
 
 COPY requirements.txt ./
+
+
 RUN apt update > /dev/null && \
-        apt install -y build-essential && \
         pip install --disable-pip-version-check -r requirements.txt
 
 # ------------------------------------------------------------------------------

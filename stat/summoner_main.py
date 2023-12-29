@@ -1,6 +1,8 @@
 # import copy
 # import os
 # import time
+import sys
+sys.path.append("/usr/src/app")
 import traceback
 from datetime import datetime, timedelta
 from common.db import sql_execute, connect_sql_aurora, conf_dict, riot_api_key, RDS_INSTANCE_TYPE

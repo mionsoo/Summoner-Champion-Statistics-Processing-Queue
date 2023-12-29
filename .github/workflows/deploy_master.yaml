@@ -31,7 +31,7 @@ jobs:
       - name: executing remote ssh commands using password
         uses: appleboy/ssh-action@v0.1.10
         with:
-          command_timeout: 30
+          command_timeout: 30m0s
           host: ${{ secrets.HOST }}
           username: ubuntu
           key: ${{ secrets.KEY }}

@@ -43,6 +43,7 @@ def queue_system():
                                                                     _
             elif Summoner Queue Table 대기 상태 없음, 진행상태 없음:
                 현재 상태 대기
+
     '''
     while True:
         try:

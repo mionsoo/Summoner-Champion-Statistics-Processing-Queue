@@ -4,7 +4,7 @@ services:
   tier_queue:
     build: .
     restart: on-failure
-    command: python3 -u /tier/main.py
+    command: python3 -u ./tier/main.py
     environment:
       API_ENV: ${API_ENV}
       AWS_ACCESS: ${AWS_ACCESS}
@@ -13,7 +13,7 @@ services:
 
   stat_summoner_queue:
     build: .
-    command: python3 -u /stat/summoner_main.py
+    command: python3 -u ./stat/summoner_main.py
     environment:
       API_ENV: ${API_ENV}
       AWS_ACCESS: ${AWS_ACCESS}
@@ -21,7 +21,7 @@ services:
 
   stat_match_queue:
     build: .
-    command: python3 -u /stat/match_main.py
+    command: python3 -u ./stat/match_main.py
     environment:
       API_ENV: ${API_ENV}
       AWS_ACCESS: ${AWS_ACCESS}

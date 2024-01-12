@@ -9,3 +9,5 @@ class WaitingSummonerObj(BaseModel):
     reg_datetime: datetime.datetime = datetime.datetime(2000, 1, 1, 0)
 
 
+class WaitingSummonerMatchObj(WaitingSummonerObj):
+    match_id: str = ''

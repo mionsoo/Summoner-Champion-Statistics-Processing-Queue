@@ -1,35 +1,28 @@
 import traceback
-
-from common.const import Status
+from core.stat_queue_sys import QueueOperator
+from model.summoner_model import WaitingSummonerObj, WaitingSummonerMatchObj
+from helper.stat_summoner_match import wait_func, work_func
 from common.db import connect_sql_aurora, RDS_INSTANCE_TYPE, sql_execute_dict
-from core.stat_queue_sys import QueueStatus, QueueOperator
-from helper.stat_summoner import wait_func, work_func
+from common.const import Status
 from common.utils import change_current_obj_status
-from model.summoner_model import WaitingSummonerObj
-from typing import Callable
 
 
-
-
-
-
-class SummonerQueueOperator(QueueOperator):
-
+class SummonerMatchQueueOperator(QueueOperator):
     def update_new_data(self):
         with connect_sql_aurora(RDS_INSTANCE_TYPE.READ) as conn:
             waiting = sql_execute_dict(
-                'SELECT platform_id, puu_id, status, reg_datetime '
-                'from b2c_summoner_queue '
+                'SELECT platform_id, puu_id, status, reg_datetime, match_id '
+                'from b2c_summoner_match_queue '
                 f'WHERE status={Status.Waiting.code} '
                 f'or status={Status.Working.code}',
                 conn
             )
 
         for i in waiting:
-            obj_insert = WaitingSummonerObj(**i)
+            obj_insert = WaitingSummonerMatchObj(**i)
             self.append(obj_insert)
 
-    def process_job(self, current_obj: WaitingSummonerObj):
+    def process_job(self, current_obj: WaitingSummonerMatchObj):
         try:
             suitable_func = self.search_suitable_process_func(current_obj)
             func_return = suitable_func(current_obj)
@@ -43,7 +36,7 @@ class SummonerQueueOperator(QueueOperator):
         finally:
             with connect_sql_aurora(RDS_INSTANCE_TYPE.READ) as conn:
                 sql_execute_dict(
-                    'UPDATE b2c_summoner_queue '
+                    'UPDATE b2c_summoner_match_queue '
                     f'SET status = {changed_current_obj_status} '
                     f'WHERE platform_id = {repr(current_obj.platform_id)} '
                     f'and puu_id = {repr(current_obj.puu_id)} '
@@ -54,8 +47,9 @@ class SummonerQueueOperator(QueueOperator):
                 conn.commit()
 
     @staticmethod
-    def search_suitable_process_func(current_obj: WaitingSummonerObj) -> Callable:
+    def search_suitable_process_func(current_obj: WaitingSummonerMatchObj):
         if current_obj.status == Status.Waiting.code:
             return wait_func
         elif current_obj.status == Status.Working.code:
             return work_func
+

@@ -1,20 +1,16 @@
 # import copy
 # import os
 # import time
-import sys
-sys.path.append("/usr/src/app")
+# import sys
+# sys.path.append("/usr/src/app")
 import traceback
-from datetime import datetime, timedelta
-from common.db import sql_execute, connect_sql_aurora, conf_dict, riot_api_key, RDS_INSTANCE_TYPE
-# from common.riot import get_json_time_limit, RiotV4Tier, RiotV4Summoner, RiotV1Accounts, RiotV1Challenges
-# from enum import Enum, auto
-# from dataclasses import dataclass
 
+from common.db import sql_execute, sql_execute_dict, connect_sql_aurora, RDS_INSTANCE_TYPE
+from common.const import Status
+from common.utils import get_current_datetime
 
-
-
-def get_current_datetime():
-    return datetime.now() + timedelta(hours=9)
+from core.stat_summoner_queue import SummonerQueueOperator
+from core.stat_queue_sys import QueueComment
 
 
 def queue_system():
@@ -41,24 +37,32 @@ def queue_system():
                 if Match table에서 해당 소환사의 match들 전부 완료인 경우:
                   Summoner Queue Table 해당 소환사 Status 완료로 표시
                                                                     _
-            elif Summoner Queue Table 대기 상태 없음, 진행상태 없음:
-                현재 상태 대기
+
 
     '''
+    queue_comment = QueueComment()
+    queue_op = SummonerQueueOperator()
+
     while True:
         try:
-            conn = connect_sql_aurora(RDS_INSTANCE_TYPE.READ)
-            r = sql_execute(
-                'SELECT * '
-                'from b2c_summoner_queue',
-                conn
-            )
-            print(r)
+            queue_op.update_new_data()
 
-        except Exception as e:
+            if queue_op.is_all_queue_is_empty() and queue_comment.is_need_to_print_empty():
+                print(f'{get_current_datetime()} | Queue is Empty')
+                print('------------------------------\n')
+                queue_comment.empty_printed()
+
+            elif queue_op.is_data_exists():
+                current_obj = queue_op.get_current_obj()
+                if current_obj is not None:
+                    queue_op.process_job(current_obj)
+                    print('------------------------------\n')
+
+                queue_comment.print_empty()
+
+        except Exception:
             print(traceback.format_exc())
-        finally:
-            conn.close()
+
 
 def run():
     pass

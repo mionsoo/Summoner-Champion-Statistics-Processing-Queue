@@ -1,11 +1,14 @@
 import sys
+
+from common.utils import get_current_datetime
+
 sys.path.append("/usr/src/app")
 import copy
 import os
 import time
 import traceback
 from pydantic import BaseModel
-from datetime import datetime, timedelta
+from datetime import datetime
 from common.db import sql_execute, connect_sql_aurora, conf_dict, riot_api_key, RDS_INSTANCE_TYPE
 import redis
 from common.riot import get_json_time_limit, RiotV4Tier, RiotV4Summoner, RiotV1Accounts, RiotV1Challenges
@@ -288,12 +291,9 @@ def is_unsearchable_response(result):
 def get_current_waiting_object() -> ApiInfo:
     r = rd.rpop('error_list')
     current_obj = ApiInfo(*r.split('/@#'))
-    print(f'{get_current_datetime()} | ',current_obj, rd.llen('error_list'))
+    print(f'{get_current_datetime()} | ', current_obj, rd.llen('error_list'))
 
     return current_obj
-
-def get_current_datetime():
-    return datetime.now() + timedelta(hours=9)
 
 
 def queue_system():
@@ -329,7 +329,7 @@ def queue_system():
                     print('------------------------------\n')
                     continue
                 else:
-                    print(f"{get_current_datetime()} | ",summoner_result.json())
+                    print(f"{get_current_datetime()} | ", summoner_result.json())
                     rd.rpush('error_list', current_obj.make_redis_string())
                     system_sleep(retry_after=get_max_retry_after(summoner_result))
 

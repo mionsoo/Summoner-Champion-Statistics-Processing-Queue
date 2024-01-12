@@ -83,6 +83,7 @@ def get_rds_instance_host(instance_type: RDS_INSTANCE_TYPE):
     else:
         raise Exception('Wrong RDS INSTANCE TYPE')
 
+
 def connect_sql_aurora(instance_type: RDS_INSTANCE_TYPE):
     '''
     메인 db 커서
@@ -104,6 +105,18 @@ def sql_execute(query, conn):
         conn : mysql connect 변수
     '''
     cursor = conn.cursor()
+    cursor.execute(query)
+    result = cursor.fetchall()
+    return result
+
+
+def sql_execute_dict(query, conn):
+    '''
+        SQL 작업 처리하여 리턴 값 반환
+        query : 작업 쿼리
+        conn : mysql connect 변수
+    '''
+    cursor = conn.cursor(cursor=pymysql.cursors.DictCursor)
     cursor.execute(query)
     result = cursor.fetchall()
     return result

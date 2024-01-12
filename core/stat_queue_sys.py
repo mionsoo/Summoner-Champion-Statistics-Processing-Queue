@@ -50,10 +50,19 @@ class QueueStatus:
 
         return popped_value
 
+
 class QueueOperator(metaclass=ABCMeta):
     def __init__(self):
         self.waiting_status = QueueStatus(criterion=Status.Waiting.code)
         self.working_status = QueueStatus(criterion=Status.Working.code)
+        self.last_obj = None
+        self.last_change_status_code = None
+
+    def update_last_obj(self, current_obj: WaitingSummonerObj | WaitingSummonerMatchObj):
+        self.last_obj = current_obj
+
+    def update_last_change_status(self, current_change_status: int):
+        self.last_change_status_code = current_change_status
 
     def append(self, obj: WaitingSummonerObj | WaitingSummonerMatchObj):
         if obj.status == Status.Waiting.code:

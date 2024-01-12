@@ -35,6 +35,7 @@ class SummonerQueueOperator(QueueOperator):
             func_return = suitable_func(current_obj)
             changed_current_obj_status = change_current_obj_status(current_obj, func_return)
 
+
         except Exception:
             changed_current_obj_status = Status.Error.code
             self.append(current_obj)

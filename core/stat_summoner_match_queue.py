@@ -1,3 +1,4 @@
+import time
 import traceback
 from core.stat_queue_sys import QueueOperator
 from model.summoner_model import WaitingSummonerObj, WaitingSummonerMatchObj
@@ -45,6 +46,7 @@ class SummonerMatchQueueOperator(QueueOperator):
                     conn
                 )
                 conn.commit()
+        time.sleep(5)
 
     @staticmethod
     def search_suitable_process_func(current_obj: WaitingSummonerMatchObj):

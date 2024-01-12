@@ -1,8 +1,7 @@
 import sys
+sys.path.append("/usr/src/app")
 
 from common.utils import get_current_datetime
-
-sys.path.append("/usr/src/app")
 import copy
 import os
 import time

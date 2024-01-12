@@ -95,7 +95,7 @@ def wait_func(current_obj: WaitingSummonerObj):
     bulk_item = ', '.join([make_bulk_value_string_insert_summoner_match_queue(current_obj, match_id) for match_id in remove_duplicated_match_ids])
     with connect_sql_aurora(RDS_INSTANCE_TYPE.READ) as conn:
         sql_execute(
-            'INSERT INTO b2c_summoner_match_queue '
+            'INSERT ignore INTO b2c_summoner_match_queue '
             '(platform_id, puu_id, match_id, status) '
             f'VALUES {bulk_item}', conn
         )

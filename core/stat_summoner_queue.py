@@ -34,8 +34,6 @@ class SummonerQueueOperator(QueueOperator):
             suitable_func = self.search_suitable_process_func(current_obj)
             func_return = suitable_func(current_obj)
             changed_current_obj_status_code = change_current_obj_status(current_obj, func_return)
-            if self.last_obj == current_obj and self.last_change_status_code == changed_current_obj_status_code:
-                time.sleep(10)
 
         except Exception:
             changed_current_obj_status_code = Status.Error.code
@@ -54,6 +52,10 @@ class SummonerQueueOperator(QueueOperator):
                     conn
                 )
                 conn.commit()
+
+            if self.last_obj == current_obj and self.last_change_status_code == changed_current_obj_status_code:
+                time.sleep(10)
+
             self.update_last_obj(current_obj)
             self.update_last_change_status(changed_current_obj_status_code)
 

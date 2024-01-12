@@ -26,7 +26,7 @@ class QueueStatus:
     def __init__(self, criterion: int):
         self.status_criterion = criterion
         self.count = 0
-        self.deque: Deque[WaitingSummonerObj] = deque()
+        self.deque: Deque[WaitingSummonerObj | WaitingSummonerMatchObj] = deque()
 
     def add_count(self):
         self.count += 1
@@ -34,7 +34,7 @@ class QueueStatus:
     def sub_count(self):
         self.count -= 1
 
-    def append_left(self, obj: WaitingSummonerObj):
+    def append_left(self, obj: WaitingSummonerObj | WaitingSummonerMatchObj):
         if obj not in self.deque and obj.status == self.status_criterion:
             self.deque.appendleft(obj)
             self.add_count()
@@ -55,13 +55,13 @@ class QueueOperator(metaclass=ABCMeta):
         self.waiting_status = QueueStatus(criterion=Status.Waiting.code)
         self.working_status = QueueStatus(criterion=Status.Working.code)
 
-    def append(self, obj: WaitingSummonerObj):
+    def append(self, obj: WaitingSummonerObj | WaitingSummonerMatchObj):
         if obj.status == Status.Waiting.code:
             self.waiting_status.append_left(obj)
         elif obj.status == Status.Working.code:
             self.working_status.append_left(obj)
 
-    def get_current_obj(self) -> WaitingSummonerObj | None:
+    def get_current_obj(self) -> WaitingSummonerObj | WaitingSummonerMatchObj | None:
         if self.waiting_status.count >= 1:
             return self.waiting_status.pop()
 

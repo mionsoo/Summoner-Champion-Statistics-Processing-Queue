@@ -29,5 +29,5 @@ def change_current_obj_status(current_obj, func_return):
         comment = ('is changed Waiting to Waiting\n'
                    '(current status is not 0 or 2)')
 
-    print(current_obj, comment)
+    print(f'{get_current_datetime()} |', *current_obj.__dict__.values(), comment)
     return changed_status

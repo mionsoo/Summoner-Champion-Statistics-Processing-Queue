@@ -35,7 +35,7 @@ def get_season_info():
     return season, season_start_timestamp, season_end_timestamp
 
 
-def get_summoner_season_match_ids(current_obj: WaitingSummonerObj, season_timestamp: Tuple[int, int]):
+def get_summoner_season_match_ids(current_obj: WaitingSummonerObj, season_timestamp: Tuple[int, int], queue_type: str):
     match_v5 = RiotV5Match(
         api_key=riot_api_key,
         platform_id=current_obj.platform_id,
@@ -48,7 +48,7 @@ def get_summoner_season_match_ids(current_obj: WaitingSummonerObj, season_timest
 
     while True:
         url = match_v5.get_match_ids_url(
-            queue_type='RANKED',
+            queue_type=queue_type,
             start_idx =start_idx,
             count=100,
             start_time=season_start_timestamp,
@@ -65,12 +65,16 @@ def get_summoner_season_match_ids(current_obj: WaitingSummonerObj, season_timest
 
 
 def make_bulk_value_string_insert_summoner_match_queue(current_obj, match_id):
-    return f'({repr(current_obj.platform_id)}, {repr(current_obj.puu_id)}, {repr(match_id)}, {Status.Waiting.code})'
+    return f'({repr(current_obj.platform_id)}, {repr(current_obj.puu_id)}, {repr(match_id)}, {Status.Working.code})'
 
 
 def wait_func(current_obj: WaitingSummonerObj):
     season, *season_timestamp = get_season_info()
-    api_called_match_ids = set(get_summoner_season_match_ids(current_obj, season_timestamp))
+    api_called_match_ids_ranked = set(get_summoner_season_match_ids(current_obj, season_timestamp, 'RANKED'))
+    api_called_match_ids_urf = set(get_summoner_season_match_ids(current_obj, season_timestamp, 'PICK_URF'))
+    api_called_match_ids_aram = set(get_summoner_season_match_ids(current_obj, season_timestamp, 'ARAM'))
+
+    api_called_match_ids_stats = api_called_match_ids_ranked | api_called_match_ids_urf | api_called_match_ids_aram
 
     with connect_sql_aurora(RDS_INSTANCE_TYPE.READ) as conn:
         db_called_match_ids = sql_execute(
@@ -83,7 +87,7 @@ def wait_func(current_obj: WaitingSummonerObj):
         )
 
     db_called_match_ids = set(sum(db_called_match_ids, ()))
-    remove_duplicated_match_ids = api_called_match_ids.difference(db_called_match_ids)
+    remove_duplicated_match_ids = api_called_match_ids_stats.difference(db_called_match_ids)
 
     if not remove_duplicated_match_ids:
         return None

@@ -1,33 +1,56 @@
+import asyncio
 import traceback
 import time
 from common.const import Status
-from common.db import connect_sql_aurora, RDS_INSTANCE_TYPE, sql_execute_dict
+from common.db import connect_sql_aurora, RDS_INSTANCE_TYPE, sql_execute_dict, sql_execute
 from core.stat_queue_sys import QueueStatus, QueueOperator
 from helper.stat_summoner import wait_func, work_func
 from common.utils import change_current_obj_status
 from model.summoner_model import WaitingSummonerObj
 from typing import Callable
 
-
+def test(obj):
+    platform_id, puu_id, status, reg_datetime = obj
+    return WaitingSummonerObj(
+        platform_id=platform_id,
+        puu_id = puu_id,
+        status = status,
+        reg_datetime = reg_datetime
+    )
 
 
 
 
 class SummonerQueueOperator(QueueOperator):
 
-    def update_new_data(self):
+    async def update_new_data(self):
+
         with connect_sql_aurora(RDS_INSTANCE_TYPE.READ) as conn:
-            waiting = sql_execute_dict(
+            waiting = set(sql_execute(
                 'SELECT platform_id, puu_id, status, reg_datetime '
                 'from b2c_summoner_queue '
                 f'WHERE status={Status.Waiting.code} '
-                f'or status={Status.Working.code}',
-                conn
+                f'order by reg_datetime desc',
+                conn)
+            )
+            working = set(sql_execute(
+                'SELECT platform_id, puu_id, status, reg_datetime '
+                'from b2c_summoner_queue '
+                f'WHERE status={Status.Working.code} '
+                f'order by reg_datetime desc',
+                conn)
             )
 
-        for i in waiting:
-            obj_insert = WaitingSummonerObj(**i)
-            self.append(obj_insert)
+        waiting_q = set(map(lambda x: tuple(x.__dict__.values()), self.waiting_status.deque))
+        q = waiting.difference(waiting_q)
+
+        working_q = set(map(lambda x: tuple(x.__dict__.values()), self.working_status.deque))
+        e = working.difference(working_q)
+        v = q | e
+
+        tasks = [asyncio.create_task(self.append(test(i)))for i in v]
+        await asyncio.gather(*tasks)
+
 
     def process_job(self, current_obj: WaitingSummonerObj):
         try:

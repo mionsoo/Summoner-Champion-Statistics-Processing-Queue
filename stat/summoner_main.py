@@ -4,6 +4,7 @@
 import sys
 sys.path.append("/usr/src/app")
 import traceback
+import asyncio
 
 from common.utils import get_current_datetime
 
@@ -11,7 +12,7 @@ from core.stat_summoner_queue import SummonerQueueOperator
 from core.stat_queue_sys import QueueComment
 
 
-def queue_system():
+async def queue_system():
     '''
     TODO:
         Match API 분당 최대 개수 파악
@@ -43,7 +44,7 @@ def queue_system():
 
     while True:
         try:
-            queue_op.update_new_data()
+            await queue_op.update_new_data()
 
             if queue_op.is_all_queue_is_empty() and queue_comment.is_need_to_print_empty():
                 print(f'{get_current_datetime()} | Queue is Empty')
@@ -63,7 +64,7 @@ def queue_system():
 
 if __name__ == '__main__':
     try:
-        queue_system()
+        asyncio.run(queue_system())
     except Exception as e:
         print(e)
 

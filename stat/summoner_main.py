@@ -1,12 +1,10 @@
 # import copy
 # import os
 # import time
-# import sys
-# sys.path.append("/usr/src/app")
+import sys
+sys.path.append("/usr/src/app")
 import traceback
 
-from common.db import sql_execute, sql_execute_dict, connect_sql_aurora, RDS_INSTANCE_TYPE
-from common.const import Status
 from common.utils import get_current_datetime
 
 from core.stat_summoner_queue import SummonerQueueOperator
@@ -62,11 +60,6 @@ def queue_system():
 
         except Exception:
             print(traceback.format_exc())
-
-
-def run():
-    pass
-
 
 if __name__ == '__main__':
     try:

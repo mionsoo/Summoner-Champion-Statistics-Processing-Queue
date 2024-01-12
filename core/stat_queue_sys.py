@@ -61,8 +61,8 @@ class QueueOperator(metaclass=ABCMeta):
     def update_last_obj(self, current_obj: WaitingSummonerObj | WaitingSummonerMatchObj):
         self.last_obj = current_obj
 
-    def update_last_change_status(self, current_change_status: int):
-        self.last_change_status_code = current_change_status
+    def update_last_change_status(self, current_change_status_code: int):
+        self.last_change_status_code = current_change_status_code
 
     def append(self, obj: WaitingSummonerObj | WaitingSummonerMatchObj):
         if obj.status == Status.Waiting.code:

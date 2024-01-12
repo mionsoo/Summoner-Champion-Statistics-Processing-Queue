@@ -29,9 +29,6 @@ class SummonerMatchQueueOperator(QueueOperator):
             func_return = suitable_func(current_obj)
             changed_current_obj_status_code = change_current_obj_status(current_obj, func_return)
 
-            if self.last_obj == current_obj and self.last_change_status_code == changed_current_obj_status_code:
-                time.sleep(5)
-
         except Exception:
             changed_current_obj_status_code = Status.Error.code
             self.append(current_obj)
@@ -51,7 +48,7 @@ class SummonerMatchQueueOperator(QueueOperator):
                 conn.commit()
             self.update_last_obj(current_obj)
             self.update_last_change_status(changed_current_obj_status_code)
-        time.sleep(5)
+        time.sleep(10)
 
     @staticmethod
     def search_suitable_process_func(current_obj: WaitingSummonerMatchObj):

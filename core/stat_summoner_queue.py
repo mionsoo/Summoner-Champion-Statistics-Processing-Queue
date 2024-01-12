@@ -1,5 +1,5 @@
 import traceback
-
+import time
 from common.const import Status
 from common.db import connect_sql_aurora, RDS_INSTANCE_TYPE, sql_execute_dict
 from core.stat_queue_sys import QueueStatus, QueueOperator
@@ -33,11 +33,12 @@ class SummonerQueueOperator(QueueOperator):
         try:
             suitable_func = self.search_suitable_process_func(current_obj)
             func_return = suitable_func(current_obj)
-            changed_current_obj_status = change_current_obj_status(current_obj, func_return)
-
+            changed_current_obj_status_code = change_current_obj_status(current_obj, func_return)
+            if self.last_obj == current_obj and self.last_change_status_code == changed_current_obj_status_code:
+                time.sleep(10)
 
         except Exception:
-            changed_current_obj_status = Status.Error.code
+            changed_current_obj_status_code = Status.Error.code
             self.append(current_obj)
             print(traceback.format_exc())
 
@@ -45,7 +46,7 @@ class SummonerQueueOperator(QueueOperator):
             with connect_sql_aurora(RDS_INSTANCE_TYPE.READ) as conn:
                 sql_execute_dict(
                     'UPDATE b2c_summoner_queue '
-                    f'SET status = {changed_current_obj_status} '
+                    f'SET status = {changed_current_obj_status_code} '
                     f'WHERE platform_id = {repr(current_obj.platform_id)} '
                     f'and puu_id = {repr(current_obj.puu_id)} '
                     f'and status = {current_obj.status} '
@@ -53,6 +54,8 @@ class SummonerQueueOperator(QueueOperator):
                     conn
                 )
                 conn.commit()
+            self.update_last_obj(current_obj)
+            self.update_last_change_status(changed_current_obj_status_code)
 
     @staticmethod
     def search_suitable_process_func(current_obj: WaitingSummonerObj) -> Callable:

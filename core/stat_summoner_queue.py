@@ -1,39 +1,46 @@
 import asyncio
-import traceback
+from datetime import datetime
 import time
-from common.const import Status
-from common.db import connect_sql_aurora, RDS_INSTANCE_TYPE, sql_execute_dict, sql_execute
-from core.stat_queue_sys import QueueStatus, QueueOperator
-from helper.stat_summoner import wait_func, work_func
-from common.utils import change_current_obj_status
-from model.summoner_model import WaitingSummonerObj
-from typing import Callable
+import traceback
 
-def test(obj):
+from common.const import Status
+from common.db import (
+    connect_sql_aurora,
+    RDS_INSTANCE_TYPE,
+    sql_execute,
+    sql_execute_dict,
+)
+from common.utils import change_current_obj_status
+from core.stat_queue_sys import QueueOperator
+
+from helper.stat_summoner import wait_func, work_func
+
+from model.summoner_model import WaitingSummonerObj
+
+from typing import Callable, Tuple
+
+
+def wrap_summoner_obj(obj: Tuple[str, str, int, datetime]) -> WaitingSummonerObj:
     platform_id, puu_id, status, reg_datetime = obj
     return WaitingSummonerObj(
         platform_id=platform_id,
-        puu_id = puu_id,
-        status = status,
-        reg_datetime = reg_datetime
+        puu_id=puu_id,
+        status=status,
+        reg_datetime=reg_datetime
     )
 
 
-
-
 class SummonerQueueOperator(QueueOperator):
-
     async def update_new_data(self):
-
         with connect_sql_aurora(RDS_INSTANCE_TYPE.READ) as conn:
-            waiting = set(sql_execute(
+            new_waiting = set(sql_execute(
                 'SELECT platform_id, puu_id, status, reg_datetime '
                 'from b2c_summoner_queue '
                 f'WHERE status={Status.Waiting.code} '
                 f'order by reg_datetime desc',
                 conn)
             )
-            working = set(sql_execute(
+            new_working = set(sql_execute(
                 'SELECT platform_id, puu_id, status, reg_datetime '
                 'from b2c_summoner_queue '
                 f'WHERE status={Status.Working.code} '
@@ -41,16 +48,17 @@ class SummonerQueueOperator(QueueOperator):
                 conn)
             )
 
-        waiting_q = set(map(lambda x: tuple(x.__dict__.values()), self.waiting_status.deque))
-        q = waiting.difference(waiting_q)
+        exist_waiting = {tuple(x.__dict__.values()) for x in self.waiting_status.deque}
+        new_waiting_removed_dupl = new_waiting.difference(exist_waiting)
 
-        working_q = set(map(lambda x: tuple(x.__dict__.values()), self.working_status.deque))
-        e = working.difference(working_q)
-        v = q | e
+        exist_working = {tuple(x.__dict__.values()) for x in self.working_status.deque}
+        new_working_removed_dupl = new_working.difference(exist_working)
 
-        tasks = [asyncio.create_task(self.append(test(i)))for i in v]
+        new_summoner = new_waiting_removed_dupl | new_working_removed_dupl
+
+        tasks = [asyncio.create_task(self.append(wrap_summoner_obj(summoner))) for summoner in new_summoner]
+
         await asyncio.gather(*tasks)
-
 
     def process_job(self, current_obj: WaitingSummonerObj):
         try:

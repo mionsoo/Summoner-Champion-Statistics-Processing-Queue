@@ -1,27 +1,62 @@
+import asyncio
 import time
 import traceback
-from core.stat_queue_sys import QueueOperator
-from model.summoner_model import WaitingSummonerObj, WaitingSummonerMatchObj
-from helper.stat_summoner_match import wait_func, work_func
-from common.db import connect_sql_aurora, RDS_INSTANCE_TYPE, sql_execute_dict
+
 from common.const import Status
+from common.db import (
+    connect_sql_aurora,
+    RDS_INSTANCE_TYPE,
+    sql_execute,
+    sql_execute_dict,
+)
 from common.utils import change_current_obj_status
+from core.stat_queue_sys import QueueOperator
+
+from helper.stat_summoner_match import wait_func, work_func
+
+from model.summoner_model import WaitingSummonerMatchObj
+from typing import Callable
+
+
+def wrap_summoner_match_obj(obj) -> WaitingSummonerMatchObj:
+    platform_id, puu_id, status, reg_datetime, match_id = obj
+    return WaitingSummonerMatchObj(
+        platform_id=platform_id,
+        puu_id=puu_id,
+        status=status,
+        reg_datetime=reg_datetime,
+        match_id=match_id
+    )
 
 
 class SummonerMatchQueueOperator(QueueOperator):
-    def update_new_data(self):
+    async def update_new_data(self):
         with connect_sql_aurora(RDS_INSTANCE_TYPE.READ) as conn:
-            waiting = sql_execute_dict(
+            new_waiting = set(sql_execute(
                 'SELECT platform_id, puu_id, status, reg_datetime, match_id '
                 'from b2c_summoner_match_queue '
                 f'WHERE status={Status.Waiting.code} '
-                f'or status={Status.Working.code}',
-                conn
+                f'order by reg_datetime desc',
+                conn)
+            )
+            new_working = set(sql_execute(
+                'SELECT platform_id, puu_id, status, reg_datetime, match_id '
+                'from b2c_summoner_match_queue '
+                f'WHERE status={Status.Working.code} '
+                f'order by reg_datetime desc',
+                conn)
             )
 
-        for i in waiting:
-            obj_insert = WaitingSummonerMatchObj(**i)
-            self.append(obj_insert)
+        exist_waiting = {tuple(x.__dict__.values()) for x in self.waiting_status.deque}
+        new_waiting_removed_dupl = new_waiting.difference(exist_waiting)
+
+        exist_working = {tuple(x.__dict__.values()) for x in self.working_status.deque}
+        new_working_removed_dupl = new_working.difference(exist_working)
+
+        new_summoner = new_waiting_removed_dupl | new_working_removed_dupl
+        tasks = [asyncio.create_task(self.append(wrap_summoner_match_obj(summoner))) for summoner in new_summoner]
+
+        await asyncio.gather(*tasks)
 
     def process_job(self, current_obj: WaitingSummonerMatchObj):
         try:
@@ -51,7 +86,7 @@ class SummonerMatchQueueOperator(QueueOperator):
         time.sleep(10)
 
     @staticmethod
-    def search_suitable_process_func(current_obj: WaitingSummonerMatchObj):
+    def search_suitable_process_func(current_obj: WaitingSummonerMatchObj)-> Callable:
         if current_obj.status == Status.Waiting.code:
             return wait_func
         elif current_obj.status == Status.Working.code:

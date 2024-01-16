@@ -1,13 +1,12 @@
+from common.const import Status
 from datetime import datetime, timedelta
 
-from common.const import Status
 
-
-def get_current_datetime():
+def get_current_datetime() -> datetime:
     return datetime.now() + timedelta(hours=9)
 
 
-def change_current_obj_status(current_obj, func_return):
+def change_current_obj_status(current_obj, func_return) -> int:
     if current_obj.status == Status.Waiting.code and func_return is None:
         changed_status = Status.Success.code
         comment = 'is changed Waiting to Success\n(No matches to insert)'

@@ -1,13 +1,9 @@
-# import copy
-# import os
-# import time
+import asyncio
+import traceback
+
 import sys
 sys.path.append("/usr/src/app")
-import traceback
-import asyncio
-
 from common.utils import get_current_datetime
-
 from core.stat_summoner_queue import SummonerQueueOperator
 from core.stat_queue_sys import QueueComment
 

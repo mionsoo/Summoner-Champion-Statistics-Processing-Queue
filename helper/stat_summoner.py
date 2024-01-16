@@ -8,12 +8,12 @@ from common.riot import get_json_time_limit, RiotV5Match
 from common.const import Status
 from model.summoner_model import WaitingSummonerObj
 
-from typing import Tuple
+from typing import Tuple, List
 import datetime
 import pytz
 
 
-def get_season_info():
+def get_season_info() -> Tuple[int, int, int]:
     now = datetime.datetime.utcnow()
     KST = pytz.timezone('Asia/Seoul').localize(now).tzinfo
     current_datetime_timestamp = datetime.datetime.now(KST).timestamp()
@@ -35,7 +35,7 @@ def get_season_info():
     return season, season_start_timestamp, season_end_timestamp
 
 
-def get_summoner_season_match_ids(current_obj: WaitingSummonerObj, season_timestamp: Tuple[int, int], queue_type: str):
+def get_summoner_season_match_ids(current_obj: WaitingSummonerObj, season_timestamp: Tuple[int, int], queue_type: str) -> List[int]:
     match_v5 = RiotV5Match(
         api_key=riot_api_key,
         platform_id=current_obj.platform_id,
@@ -64,11 +64,11 @@ def get_summoner_season_match_ids(current_obj: WaitingSummonerObj, season_timest
     return api_called_match_ids
 
 
-def make_bulk_value_string_insert_summoner_match_queue(current_obj, match_id):
+def make_bulk_value_string_insert_summoner_match_queue(current_obj, match_id) -> str:
     return f'({repr(current_obj.platform_id)}, {repr(current_obj.puu_id)}, {repr(match_id)}, {Status.Working.code})'
 
 
-def wait_func(current_obj: WaitingSummonerObj):
+def wait_func(current_obj: WaitingSummonerObj) -> int | None:
     season, *season_timestamp = get_season_info()
     api_called_match_ids_ranked = set(get_summoner_season_match_ids(current_obj, season_timestamp, 'RANKED'))
     api_called_match_ids_urf = set(get_summoner_season_match_ids(current_obj, season_timestamp, 'PICK_URF'))
@@ -104,7 +104,7 @@ def wait_func(current_obj: WaitingSummonerObj):
     return 1
 
 
-def work_func(current_obj):
+def work_func(current_obj) -> int | None:
     with connect_sql_aurora(RDS_INSTANCE_TYPE.READ) as conn:
         not_finished_jobs = sql_execute(
             'SELECT match_id, status '

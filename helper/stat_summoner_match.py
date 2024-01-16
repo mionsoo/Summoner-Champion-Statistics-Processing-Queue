@@ -1,14 +1,14 @@
-from model.summoner_model import WaitingSummonerMatchObj
-from common.db import connect_sql_aurora, RDS_INSTANCE_TYPE, sql_execute, sql_execute_dict
-import requests
 import json
+import requests
+
+from model.summoner_model import WaitingSummonerMatchObj
 
 
-def wait_func(current_obj: WaitingSummonerMatchObj):
+def wait_func(current_obj: WaitingSummonerMatchObj) -> None:
     return None
 
 
-def work_func(current_obj: WaitingSummonerMatchObj):
+def work_func(current_obj: WaitingSummonerMatchObj) -> int | None:
     req_data = {
         "platform_id": current_obj.platform_id,
         "puu_id": current_obj.puu_id,

@@ -30,7 +30,7 @@ def wrap_summoner_match_obj(obj) -> WaitingSummonerMatchObj:
 
 
 class SummonerMatchQueueOperator(QueueOperator):
-    async def update_new_data(self):
+    def update_new_data(self):
         with connect_sql_aurora(RDS_INSTANCE_TYPE.READ) as conn:
             new_waiting = set(sql_execute(
                 'SELECT platform_id, puu_id, status, reg_datetime, match_id '
@@ -54,9 +54,10 @@ class SummonerMatchQueueOperator(QueueOperator):
         new_working_removed_dupl = new_working.difference(exist_working)
 
         new_summoner = new_waiting_removed_dupl | new_working_removed_dupl
-        tasks = [asyncio.create_task(self.append(wrap_summoner_match_obj(summoner))) for summoner in new_summoner]
+        for summoner in new_summoner:
+            self.append(wrap_summoner_match_obj(summoner))
+        # tasks = [self.append(wrap_summoner_match_obj(summoner)) for summoner in new_summoner]
 
-        await asyncio.gather(*tasks)
 
     def process_job(self, current_obj: WaitingSummonerMatchObj):
         try:

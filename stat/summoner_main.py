@@ -8,7 +8,7 @@ from core.stat_summoner_queue import SummonerQueueOperator
 from core.stat_queue_sys import QueueComment
 
 
-async def queue_system():
+def queue_system():
     '''
     TODO:
         Match API 분당 최대 개수 파악
@@ -40,7 +40,7 @@ async def queue_system():
 
     while True:
         try:
-            await queue_op.update_new_data()
+            queue_op.update_new_data()
 
             if queue_op.is_all_queue_is_empty() and queue_comment.is_need_to_print_empty():
                 print(f'{get_current_datetime()} | Queue is Empty')
@@ -60,7 +60,7 @@ async def queue_system():
 
 if __name__ == '__main__':
     try:
-        asyncio.run(queue_system())
+        queue_system()
     except Exception as e:
         print(e)
 

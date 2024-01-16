@@ -8,13 +8,13 @@ from core.stat_summoner_match_queue import SummonerMatchQueueOperator
 from core.stat_queue_sys import QueueComment
 
 
-async def main():
+def main():
     queue_comment = QueueComment()
     queue_op = SummonerMatchQueueOperator()
 
     while True:
         try:
-            await queue_op.update_new_data()
+            queue_op.update_new_data()
 
             if queue_op.is_all_queue_is_empty() and queue_comment.is_need_to_print_empty():
                 print(f'{get_current_datetime()} | Queue is Empty')
@@ -35,7 +35,7 @@ async def main():
 
 if __name__ == '__main__':
     try:
-        asyncio.run(main())
+        main()
     except Exception as e:
         print(e)
 

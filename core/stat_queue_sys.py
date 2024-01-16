@@ -34,7 +34,7 @@ class QueueStatus:
     def sub_count(self):
         self.count -= 1
 
-    async def append_left(self, obj: WaitingSummonerObj | WaitingSummonerMatchObj):
+    def append_left(self, obj: WaitingSummonerObj | WaitingSummonerMatchObj):
         if obj not in self.deque and obj.status == self.status_criterion:
             self.deque.appendleft(obj)
             self.add_count()
@@ -64,11 +64,11 @@ class QueueOperator(metaclass=ABCMeta):
     def update_last_change_status(self, current_change_status_code: int):
         self.last_change_status_code = current_change_status_code
 
-    async def append(self, obj: WaitingSummonerObj | WaitingSummonerMatchObj):
+    def append(self, obj: WaitingSummonerObj | WaitingSummonerMatchObj):
         if obj.status == Status.Waiting.code:
-            await self.waiting_status.append_left(obj)
+            self.waiting_status.append_left(obj)
         elif obj.status == Status.Working.code:
-            await self.working_status.append_left(obj)
+            self.working_status.append_left(obj)
 
     def get_current_obj(self) -> WaitingSummonerObj | WaitingSummonerMatchObj | None:
         if self.waiting_status.count >= 1:

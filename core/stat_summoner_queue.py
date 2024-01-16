@@ -31,7 +31,7 @@ def wrap_summoner_obj(obj: Tuple[str, str, int, datetime]) -> WaitingSummonerObj
 
 
 class SummonerQueueOperator(QueueOperator):
-    async def update_new_data(self):
+    def update_new_data(self):
 
         with connect_sql_aurora(RDS_INSTANCE_TYPE.READ) as conn:
             s = time.time()
@@ -76,10 +76,13 @@ class SummonerQueueOperator(QueueOperator):
         print(f'{round(time.time() - s, 4)}  concat')
 
         s = time.time()
-        tasks = [asyncio.create_task(self.append(wrap_summoner_obj(summoner))) for summoner in new_summoner]
+        # tasks = [asyncio.create_task(self.append(wrap_summoner_obj(summoner))) for summoner in new_summoner]
+        #
+        #
+        # await asyncio.gather(*tasks)
+        for summoner in new_summoner:
+            self.append(wrap_summoner_obj(summoner))
 
-
-        await asyncio.gather(*tasks)
         print(f'{round(time.time() - s, 4)}  gather')
 
     def process_job(self, current_obj: WaitingSummonerObj):

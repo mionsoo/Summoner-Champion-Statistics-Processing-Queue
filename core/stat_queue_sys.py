@@ -2,10 +2,8 @@ from model.summoner_model import WaitingSummonerObj, WaitingSummonerMatchObj
 from abc import *
 
 from collections import deque
-from typing import Deque
+from typing import Deque, List
 from common.const import Status
-from common.db import connect_sql_aurora, RDS_INSTANCE_TYPE, sql_execute_dict
-
 
 
 class QueueComment:
@@ -28,16 +26,23 @@ class QueueStatus:
         self.count = 0
         self.deque: Deque[WaitingSummonerObj | WaitingSummonerMatchObj] = deque()
 
+    def reinit(self, objs: List[WaitingSummonerObj | WaitingSummonerMatchObj]):
+        self.deque = deque(objs)
+        self.count = len(self.deque)
+
     def add_count(self):
         self.count += 1
 
     def sub_count(self):
         self.count -= 1
 
+    def extend_left(self, objs: List[WaitingSummonerObj | WaitingSummonerMatchObj]):
+        self.deque.extendleft(objs)
+        self.count += len(objs)
+
     def append_left(self, obj: WaitingSummonerObj | WaitingSummonerMatchObj):
-        if obj not in self.deque and obj.status == self.status_criterion:
-            self.deque.appendleft(obj)
-            self.add_count()
+        self.deque.appendleft(obj)
+        self.add_count()
 
     def pop(self):
         try:
@@ -64,11 +69,11 @@ class QueueOperator(metaclass=ABCMeta):
     def update_last_change_status(self, current_change_status_code: int):
         self.last_change_status_code = current_change_status_code
 
-    def append(self, obj: WaitingSummonerObj | WaitingSummonerMatchObj):
-        if obj.status == Status.Waiting.code:
-            self.waiting_status.append_left(obj)
-        elif obj.status == Status.Working.code:
-            self.working_status.append_left(obj)
+    # def append(self, objs: List[WaitingSummonerObj | WaitingSummonerMatchObj]):
+    #     if objs[0].status == Status.Waiting.code:
+    #         self.waiting_status.extend_left(objs)
+    #     elif objs[0].status == Status.Working.code:
+    #         self.working_status.extend_left(objs)
 
     def get_current_obj(self) -> WaitingSummonerObj | WaitingSummonerMatchObj | None:
         if self.waiting_status.count >= 1:

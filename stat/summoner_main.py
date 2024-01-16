@@ -1,4 +1,3 @@
-import asyncio
 import traceback
 
 import sys
@@ -57,6 +56,7 @@ def queue_system():
 
         except Exception:
             print(traceback.format_exc())
+
 
 if __name__ == '__main__':
     try:

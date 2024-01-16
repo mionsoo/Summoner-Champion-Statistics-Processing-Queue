@@ -1,4 +1,3 @@
-import asyncio
 import time
 import traceback
 
@@ -48,15 +47,21 @@ class SummonerMatchQueueOperator(QueueOperator):
             )
 
         exist_waiting = {tuple(x.__dict__.values()) for x in self.waiting_status.deque}
-        new_waiting_removed_dupl = new_waiting.difference(exist_waiting)
+        new_waiting_removed_dupl = list(map(wrap_summoner_match_obj, new_waiting.difference(exist_waiting)))
 
         exist_working = {tuple(x.__dict__.values()) for x in self.working_status.deque}
-        new_working_removed_dupl = new_working.difference(exist_working)
+        new_working_removed_dupl = list(map(wrap_summoner_match_obj, new_working.difference(exist_working)))
 
-        new_summoner = new_waiting_removed_dupl | new_working_removed_dupl
-        for summoner in new_summoner:
-            self.append(wrap_summoner_match_obj(summoner))
-        # tasks = [self.append(wrap_summoner_match_obj(summoner)) for summoner in new_summoner]
+        if len(exist_waiting) == 0:
+            self.waiting_status.reinit(new_waiting_removed_dupl)
+        else:
+            self.waiting_status.extend_left(new_waiting_removed_dupl)
+
+        if len(exist_working) == 0:
+            self.working_status.reinit(new_working_removed_dupl)
+        else:
+            self.working_status.extend_left(new_waiting_removed_dupl)
+
 
 
     def process_job(self, current_obj: WaitingSummonerMatchObj):

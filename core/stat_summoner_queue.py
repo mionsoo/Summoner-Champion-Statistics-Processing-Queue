@@ -1,4 +1,3 @@
-import asyncio
 from datetime import datetime
 import time
 import traceback
@@ -32,9 +31,7 @@ def wrap_summoner_obj(obj: Tuple[str, str, int, datetime]) -> WaitingSummonerObj
 
 class SummonerQueueOperator(QueueOperator):
     def update_new_data(self):
-
         with connect_sql_aurora(RDS_INSTANCE_TYPE.READ) as conn:
-            s = time.time()
             new_waiting = set(sql_execute(
                 'SELECT platform_id, puu_id, status, reg_datetime '
                 'from b2c_summoner_queue '
@@ -42,9 +39,7 @@ class SummonerQueueOperator(QueueOperator):
                 f'order by reg_datetime desc',
                 conn)
             )
-            print(f'{round(time.time() - s, 4)}  db waiting call')
 
-            s = time.time()
             new_working = set(sql_execute(
                 'SELECT platform_id, puu_id, status, reg_datetime '
                 'from b2c_summoner_queue '
@@ -52,38 +47,24 @@ class SummonerQueueOperator(QueueOperator):
                 f'order by reg_datetime desc',
                 conn)
             )
-            print(f'{round(time.time() - s, 4)}  db working call')
 
-
-        s = time.time()
         exist_waiting = {tuple(x.__dict__.values()) for x in self.waiting_status.deque}
-        print(f'{round(time.time() - s, 4)}  make_set')
+        new_waiting_removed_dupl = list(map(wrap_summoner_obj, new_waiting.difference(exist_waiting)))
 
-        s = time.time()
-        new_waiting_removed_dupl = new_waiting.difference(exist_waiting)
-        print(f'{round(time.time() - s, 4)}  remove duplicate')
-
-        s = time.time()
         exist_working = {tuple(x.__dict__.values()) for x in self.working_status.deque}
-        print(f'{round(time.time() - s, 4)}  make_set2')
+        new_working_removed_dupl = list(map(wrap_summoner_obj, new_working.difference(exist_working)))
 
-        s = time.time()
-        new_working_removed_dupl = new_working.difference(exist_working)
-        print(f'{round(time.time() - s, 4)}  remove duplicate2')
 
-        s = time.time()
-        new_summoner = new_waiting_removed_dupl | new_working_removed_dupl
-        print(f'{round(time.time() - s, 4)}  concat')
 
-        s = time.time()
-        # tasks = [asyncio.create_task(self.append(wrap_summoner_obj(summoner))) for summoner in new_summoner]
-        #
-        #
-        # await asyncio.gather(*tasks)
-        for summoner in new_summoner:
-            self.append(wrap_summoner_obj(summoner))
+        if len(exist_waiting) == 0:
+            self.waiting_status.reinit(new_waiting_removed_dupl)
+        else:
+            self.waiting_status.extend_left(new_waiting_removed_dupl)
 
-        print(f'{round(time.time() - s, 4)}  gather')
+        if len(exist_working) == 0:
+            self.working_status.reinit(new_working_removed_dupl)
+        else:
+            self.working_status.extend_left(new_waiting_removed_dupl)
 
     def process_job(self, current_obj: WaitingSummonerObj):
         try:
@@ -93,7 +74,10 @@ class SummonerQueueOperator(QueueOperator):
 
         except Exception:
             changed_current_obj_status_code = Status.Error.code
-            self.append(current_obj)
+            if current_obj.status == Status.Waiting.code:
+                self.waiting_status.append_left(current_obj)
+            elif current_obj.status == Status.Working.code:
+                self.working_status.append_left(current_obj)
             print(traceback.format_exc())
 
         finally:

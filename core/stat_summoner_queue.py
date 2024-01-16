@@ -32,7 +32,9 @@ def wrap_summoner_obj(obj: Tuple[str, str, int, datetime]) -> WaitingSummonerObj
 
 class SummonerQueueOperator(QueueOperator):
     async def update_new_data(self):
+
         with connect_sql_aurora(RDS_INSTANCE_TYPE.READ) as conn:
+            s = time.time()
             new_waiting = set(sql_execute(
                 'SELECT platform_id, puu_id, status, reg_datetime '
                 'from b2c_summoner_queue '
@@ -40,6 +42,9 @@ class SummonerQueueOperator(QueueOperator):
                 f'order by reg_datetime desc',
                 conn)
             )
+            print(f'{round(time.time() - s, 4)}  db waiting call')
+
+            s = time.time()
             new_working = set(sql_execute(
                 'SELECT platform_id, puu_id, status, reg_datetime '
                 'from b2c_summoner_queue '
@@ -47,18 +52,35 @@ class SummonerQueueOperator(QueueOperator):
                 f'order by reg_datetime desc',
                 conn)
             )
+            print(f'{round(time.time() - s, 4)}  db working call')
 
+
+        s = time.time()
         exist_waiting = {tuple(x.__dict__.values()) for x in self.waiting_status.deque}
+        print(f'{round(time.time() - s, 4)}  make_set')
+
+        s = time.time()
         new_waiting_removed_dupl = new_waiting.difference(exist_waiting)
+        print(f'{round(time.time() - s, 4)}  remove duplicate')
 
+        s = time.time()
         exist_working = {tuple(x.__dict__.values()) for x in self.working_status.deque}
+        print(f'{round(time.time() - s, 4)}  make_set2')
+
+        s = time.time()
         new_working_removed_dupl = new_working.difference(exist_working)
+        print(f'{round(time.time() - s, 4)}  remove duplicate2')
 
+        s = time.time()
         new_summoner = new_waiting_removed_dupl | new_working_removed_dupl
+        print(f'{round(time.time() - s, 4)}  concat')
 
+        s = time.time()
         tasks = [asyncio.create_task(self.append(wrap_summoner_obj(summoner))) for summoner in new_summoner]
 
+
         await asyncio.gather(*tasks)
+        print(f'{round(time.time() - s, 4)}  gather')
 
     def process_job(self, current_obj: WaitingSummonerObj):
         try:

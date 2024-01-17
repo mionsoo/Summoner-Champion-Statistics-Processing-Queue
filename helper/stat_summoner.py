@@ -1,5 +1,3 @@
-import time
-
 from common.db import (
     sql_execute,
     connect_sql_aurora,
@@ -72,10 +70,10 @@ def make_bulk_value_string_insert_summoner_match_queue(current_obj, match_id) ->
 
 def wait_func(current_obj: WaitingSummonerObj) -> int | None:
     season, *season_timestamp = get_season_info()
+
     api_called_match_ids_ranked = set(get_summoner_season_match_ids(current_obj, season_timestamp, 'RANKED'))
     api_called_match_ids_urf = set(get_summoner_season_match_ids(current_obj, season_timestamp, 'PICK_URF'))
     api_called_match_ids_aram = set(get_summoner_season_match_ids(current_obj, season_timestamp, 'ARAM'))
-
     api_called_match_ids_stats = api_called_match_ids_ranked | api_called_match_ids_urf | api_called_match_ids_aram
 
     with connect_sql_aurora(RDS_INSTANCE_TYPE.READ) as conn:
@@ -102,8 +100,6 @@ def wait_func(current_obj: WaitingSummonerObj) -> int | None:
             f'VALUES {bulk_item}', conn
         )
         conn.commit()
-
-    time.sleep(10)
 
     return 1
 

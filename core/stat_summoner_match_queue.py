@@ -8,7 +8,7 @@ from common.db import (
     sql_execute,
     sql_execute_dict,
 )
-from common.utils import change_current_obj_status
+from common.utils import change_current_obj_status, get_current_datetime, logging_time
 from core.stat_queue_sys import QueueOperator
 
 from helper.stat_summoner_match import wait_func, work_func
@@ -35,14 +35,14 @@ class SummonerMatchQueueOperator(QueueOperator):
                 'SELECT platform_id, puu_id, status, reg_datetime, match_id '
                 'from b2c_summoner_match_queue '
                 f'WHERE status={Status.Waiting.code} '
-                f'order by reg_datetime desc',
+                f'order by reg_datetime desc ',
                 conn)
             )
             new_working = set(sql_execute(
                 'SELECT platform_id, puu_id, status, reg_datetime, match_id '
                 'from b2c_summoner_match_queue '
                 f'WHERE status={Status.Working.code} '
-                f'order by reg_datetime desc',
+                f'order by reg_datetime desc ',
                 conn)
             )
 
@@ -52,16 +52,20 @@ class SummonerMatchQueueOperator(QueueOperator):
         exist_working = {tuple(x.__dict__.values()) for x in self.working_status.deque}
         new_working_removed_dupl = list(map(wrap_summoner_match_obj, new_working.difference(exist_working)))
 
+        s = time.time()
         if len(exist_waiting) == 0:
-            self.waiting_status.reinit(new_waiting_removed_dupl)
+            self.waiting_status.reinit(sorted(new_waiting_removed_dupl,key=lambda x: x.reg_datetime))
         else:
-            self.waiting_status.extend_left(new_waiting_removed_dupl)
+            self.waiting_status.extend(new_waiting_removed_dupl)
 
         if len(exist_working) == 0:
-            self.working_status.reinit(new_working_removed_dupl)
+            self.working_status.reinit(sorted(new_working_removed_dupl, key=lambda x: x.reg_datetime))
         else:
-            self.working_status.extend_left(new_waiting_removed_dupl)
+            self.working_status.extend(new_waiting_removed_dupl)
 
+        print(f'{get_current_datetime()} | Updated ({time.time() - s} processed)')
+
+    @logging_time
     def process_job(self, current_obj: WaitingSummonerMatchObj):
         try:
             suitable_func = self.search_suitable_process_func(current_obj)
@@ -70,7 +74,10 @@ class SummonerMatchQueueOperator(QueueOperator):
 
         except Exception:
             changed_current_obj_status_code = Status.Error.code
-            self.append(current_obj)
+            if current_obj.status == Status.Waiting.code:
+                self.waiting_status.append(current_obj)
+            elif current_obj.status == Status.Working.code:
+                self.working_status.append(current_obj)
             print(traceback.format_exc())
 
         finally:
@@ -87,7 +94,7 @@ class SummonerMatchQueueOperator(QueueOperator):
                 conn.commit()
             self.update_last_obj(current_obj)
             self.update_last_change_status(changed_current_obj_status_code)
-        time.sleep(10)
+
 
     @staticmethod
     def search_suitable_process_func(current_obj: WaitingSummonerMatchObj)-> Callable:

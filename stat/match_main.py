@@ -24,6 +24,7 @@ def main():
                 current_obj = queue_op.get_current_obj()
                 if current_obj is not None:
                     queue_op.process_job(current_obj)
+                    queue_op.print_remain()
                     print('------------------------------\n')
 
                 queue_comment.print_empty()

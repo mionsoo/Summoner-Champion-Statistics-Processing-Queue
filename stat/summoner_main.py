@@ -6,6 +6,8 @@ from common.utils import get_current_datetime
 from core.stat_summoner_queue import SummonerQueueOperator
 from core.stat_queue_sys import QueueComment
 
+import time
+
 
 def queue_system():
     '''
@@ -48,8 +50,10 @@ def queue_system():
 
             elif queue_op.is_data_exists():
                 current_obj = queue_op.get_current_obj()
+                print(f'{get_current_datetime()} | ', *current_obj.__dict__.values())
                 if current_obj is not None:
                     queue_op.process_job(current_obj)
+                    queue_op.print_remain()
                     print('------------------------------\n')
 
                 queue_comment.print_empty()

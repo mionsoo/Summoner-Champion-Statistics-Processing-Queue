@@ -36,17 +36,17 @@ class QueueStatus:
     def sub_count(self):
         self.count -= 1
 
-    def extend_left(self, objs: List[WaitingSummonerObj | WaitingSummonerMatchObj]):
-        self.deque.extendleft(objs)
+    def extend(self, objs: List[WaitingSummonerObj | WaitingSummonerMatchObj]):
+        self.deque.extend(objs)
         self.count += len(objs)
 
     def append_left(self, obj: WaitingSummonerObj | WaitingSummonerMatchObj):
-        self.deque.appendleft(obj)
+        self.deque.append(obj)
         self.add_count()
 
     def pop(self):
         try:
-            popped_value = self.deque.pop()
+            popped_value = self.deque.popleft()
         except IndexError:
             popped_value = WaitingSummonerObj()
         else:
@@ -103,3 +103,9 @@ class QueueOperator(metaclass=ABCMeta):
     @abstractmethod
     def search_suitable_process_func(current_obj: WaitingSummonerObj | WaitingSummonerMatchObj):
         pass
+
+
+    def print_remain(self):
+        print(f'\n - Remain\n'
+              f'\twaiting: {self.waiting_status.count}\n'
+              f'\tworking: {self.working_status.count}')

@@ -1,6 +1,7 @@
 import json
 import requests
 
+from common.utils import get_current_datetime
 from model.summoner_model import WaitingSummonerMatchObj
 
 
@@ -18,10 +19,11 @@ def work_func(current_obj: WaitingSummonerMatchObj) -> int | None:
         "Referer": 'deeplol.gg'
     }
     url = 'https://renew.deeplol.gg/match/stats-async'
-    print(current_obj.match_id, current_obj.platform_id, current_obj.puu_id)
     with requests.post(url, data=json.dumps(req_data), headers=req_headers) as req:
         r = req.json()
-    print(r['msg'])
+
+    print(f'{get_current_datetime()} | ',current_obj.match_id, current_obj.platform_id, current_obj.puu_id)
+    print(f'{get_current_datetime()} | ', r['msg'])
 
     if r['msg'].split(', ')[-1] == 'insert success':
         return None

@@ -62,8 +62,6 @@ class SummonerMatchQueueOperator(QueueOperator):
         else:
             self.working_status.extend_left(new_waiting_removed_dupl)
 
-
-
     def process_job(self, current_obj: WaitingSummonerMatchObj):
         try:
             suitable_func = self.search_suitable_process_func(current_obj)

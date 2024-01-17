@@ -1,3 +1,5 @@
+import time
+
 from common.db import (
     sql_execute,
     connect_sql_aurora,
@@ -100,6 +102,8 @@ def wait_func(current_obj: WaitingSummonerObj) -> int | None:
             f'VALUES {bulk_item}', conn
         )
         conn.commit()
+
+    time.sleep(10)
 
     return 1
 

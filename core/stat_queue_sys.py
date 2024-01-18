@@ -79,7 +79,7 @@ class QueueOperator(metaclass=ABCMeta):
         total_count = self.waiting_status.count + self.working_status.count
         working_ratio = self.working_status.count / total_count
 
-        if working_ratio > 0.1:
+        if working_ratio > 0.3:
             return self.working_status.pop()
 
         elif self.waiting_status.count >= 1:

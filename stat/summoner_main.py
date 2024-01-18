@@ -2,7 +2,9 @@ import traceback
 
 import sys
 sys.path.append("/usr/src/app")
+
 from common.utils import get_current_datetime
+from common.const import Status
 from core.stat_summoner_queue import SummonerQueueOperator
 from core.stat_queue_sys import QueueComment
 
@@ -41,7 +43,10 @@ def queue_system():
 
     while True:
         try:
-            queue_op.update_new_data()
+            if queue_op.last_obj is not None and queue_op.last_obj.status == Status.Working.code:
+                pass
+            else:
+                queue_op.update_new_data()
 
             if queue_op.is_all_queue_is_empty() and queue_comment.is_need_to_print_empty():
                 print(f'{get_current_datetime()} | Queue is Empty')

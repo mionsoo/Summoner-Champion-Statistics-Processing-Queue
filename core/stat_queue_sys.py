@@ -113,5 +113,5 @@ class QueueOperator(metaclass=ABCMeta):
 
     def print_remain(self):
         print(f'\n - Remain\n'
-              f'\tWaiting: {self.waiting_status.count} ({self.calc_waiting_ratio()*100})\n'
-              f'\tWorking: {self.working_status.count} ({self.calc_working_ratio()*100})')
+              f'\tWaiting: {self.waiting_status.count} ({round(self.calc_waiting_ratio()*100, 2)})\n'
+              f'\tWorking: {self.working_status.count} ({round(self.calc_working_ratio()*100, 2)})')

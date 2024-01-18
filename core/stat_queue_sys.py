@@ -62,6 +62,16 @@ class QueueOperator(metaclass=ABCMeta):
         self.working_status = QueueStatus(criterion=Status.Working.code)
         self.last_obj = None
         self.last_change_status_code = None
+        self.ratio = (0.0, 0.0)
+
+    def calc_total_count(self):
+        return self.waiting_status.count + self.working_status.count
+
+    def calc_waiting_ratio(self):
+        return self.waiting_status.count /  self.calc_total_count()
+
+    def calc_working_ratio(self):
+        return self.working_status.count / self.calc_total_count()
 
     def update_last_obj(self, current_obj: WaitingSummonerObj | WaitingSummonerMatchObj):
         self.last_obj = current_obj
@@ -69,17 +79,8 @@ class QueueOperator(metaclass=ABCMeta):
     def update_last_change_status(self, current_change_status_code: int):
         self.last_change_status_code = current_change_status_code
 
-    # def append(self, objs: List[WaitingSummonerObj | WaitingSummonerMatchObj]):
-    #     if objs[0].status == Status.Waiting.code:
-    #         self.waiting_status.extend_left(objs)
-    #     elif objs[0].status == Status.Working.code:
-    #         self.working_status.extend_left(objs)
-
     def get_current_obj(self) -> WaitingSummonerObj | WaitingSummonerMatchObj | None:
-        total_count = self.waiting_status.count + self.working_status.count
-        working_ratio = self.working_status.count / total_count
-
-        if working_ratio > 0.3:
+        if self.calc_working_ratio() > 0.3:
             return self.working_status.pop()
 
         elif self.waiting_status.count >= 1:
@@ -110,8 +111,7 @@ class QueueOperator(metaclass=ABCMeta):
     def search_suitable_process_func(current_obj: WaitingSummonerObj | WaitingSummonerMatchObj):
         pass
 
-
     def print_remain(self):
         print(f'\n - Remain\n'
-              f'\twaiting: {self.waiting_status.count}\n'
-              f'\tworking: {self.working_status.count}')
+              f'\tWaiting: {self.waiting_status.count} ({self.calc_waiting_ratio()*100})\n'
+              f'\tWorking: {self.working_status.count} ({self.calc_working_ratio()*100})')

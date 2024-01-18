@@ -8,7 +8,7 @@ from common.db import (
     sql_execute,
     sql_execute_dict,
 )
-from common.utils import change_current_obj_status, get_current_datetime, logging_time
+from common.utils import get_changed_current_obj_status, get_current_datetime, logging_time
 from core.stat_queue_sys import QueueOperator
 
 from helper.stat_summoner_match import wait_func, work_func
@@ -70,7 +70,7 @@ class SummonerMatchQueueOperator(QueueOperator):
         try:
             suitable_func = self.search_suitable_process_func(current_obj)
             func_return = suitable_func(current_obj)
-            changed_current_obj_status_code = change_current_obj_status(current_obj, func_return)
+            changed_current_obj_status_code = get_changed_current_obj_status(current_obj, func_return)
 
         except Exception:
             changed_current_obj_status_code = Status.Error.code

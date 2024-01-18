@@ -9,14 +9,14 @@ from common.db import (
     sql_execute,
     sql_execute_dict,
 )
-from common.utils import change_current_obj_status, get_current_datetime, logging_time
+from common.utils import get_changed_current_obj_status, get_current_datetime, logging_time
 from core.stat_queue_sys import QueueOperator
 
 from helper.stat_summoner import wait_func, work_func
 
-from model.summoner_model import WaitingSummonerObj
+from model.summoner_model import WaitingSummonerObj, WaitingSummonerMatchObj
 
-from typing import Callable, Tuple
+from typing import Callable, Tuple, List
 
 
 def wrap_summoner_obj(obj: Tuple[str, str, int, datetime]) -> WaitingSummonerObj:
@@ -29,6 +29,16 @@ def wrap_summoner_obj(obj: Tuple[str, str, int, datetime]) -> WaitingSummonerObj
     )
 
 
+def selection_sort(arr: List[WaitingSummonerObj | WaitingSummonerMatchObj]):
+    for i in range(len(arr) - 1):
+        min_idx = i
+        for j in range(i + 1, len(arr)):
+            if arr[j].reg_datetime < arr[min_idx].reg_datetime:
+                min_idx = j
+        arr[i], arr[min_idx] = arr[min_idx], arr[i]
+    return arr
+
+
 class SummonerQueueOperator(QueueOperator):
     def update_new_data(self):
         with connect_sql_aurora(RDS_INSTANCE_TYPE.READ) as conn:
@@ -36,7 +46,7 @@ class SummonerQueueOperator(QueueOperator):
                 'SELECT platform_id, puu_id, status, reg_datetime '
                 'from b2c_summoner_queue '
                 f'WHERE status={Status.Waiting.code} '
-                f'order by reg_datetime desc ',
+                f'order by reg_datetime asc ',
                 conn)
             )
 
@@ -44,27 +54,28 @@ class SummonerQueueOperator(QueueOperator):
                 'SELECT platform_id, puu_id, status, reg_datetime '
                 'from b2c_summoner_queue '
                 f'WHERE status={Status.Working.code} '
-                f'order by reg_datetime desc ',
+                f'order by reg_datetime asc ',
                 conn)
             )
 
-
+        s = time.time()
         exist_waiting = {tuple(x.__dict__.values()) for x in self.waiting_status.deque}
         new_waiting_removed_dupl = list(map(wrap_summoner_obj, new_waiting.difference(exist_waiting)))
+        sorted_new_waiting = list(sorted(new_waiting_removed_dupl, key=lambda x: x.reg_datetime))
 
         exist_working = {tuple(x.__dict__.values()) for x in self.working_status.deque}
         new_working_removed_dupl = list(map(wrap_summoner_obj, new_working.difference(exist_working)))
+        sorted_new_working = list(sorted(new_working_removed_dupl, key=lambda x: x.reg_datetime))
 
-        s = time.time()
         if len(exist_waiting) == 0:
-            self.waiting_status.reinit(sorted(new_waiting_removed_dupl, key=lambda x: x.reg_datetime))
+            self.waiting_status.reinit(sorted_new_waiting)
         else:
-            self.waiting_status.extend(new_waiting_removed_dupl)
+            self.waiting_status.extend(sorted_new_waiting)
 
         if len(exist_working) == 0:
-            self.working_status.reinit(sorted(new_working_removed_dupl, key=lambda x: x.reg_datetime))
+            self.working_status.reinit(sorted_new_working)
         else:
-            self.working_status.extend(new_waiting_removed_dupl)
+            self.working_status.extend(sorted_new_working)
 
         print(f'{get_current_datetime()} | Updated ({time.time()-s} processed)')
 
@@ -73,7 +84,7 @@ class SummonerQueueOperator(QueueOperator):
         try:
             suitable_func = self.search_suitable_process_func(current_obj)
             func_return = suitable_func(current_obj)
-            changed_current_obj_status_code = change_current_obj_status(current_obj, func_return)
+            changed_current_obj_status_code = get_changed_current_obj_status(current_obj, func_return)
 
         except Exception:
             changed_current_obj_status_code = Status.Error.code
@@ -96,7 +107,7 @@ class SummonerQueueOperator(QueueOperator):
                 )
                 conn.commit()
 
-            if self.last_obj == current_obj and self.last_change_status_code == changed_current_obj_status_code:
+            if self.last_obj == current_obj and self.last_change_status_code == current_obj.status:
                 time.sleep(10)
 
             self.update_last_obj(current_obj)

@@ -76,7 +76,10 @@ class QueueOperator(metaclass=ABCMeta):
     #         self.working_status.extend_left(objs)
 
     def get_current_obj(self) -> WaitingSummonerObj | WaitingSummonerMatchObj | None:
-        if self.waiting_status.count >= 1:
+        if self.waiting_status.count >= 3000 and self.working_status.count >= 100:
+            return self.working_status.pop()
+
+        elif self.waiting_status.count >= 1:
             return self.waiting_status.pop()
 
         elif self.working_status.count >= 1:

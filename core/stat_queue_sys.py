@@ -89,7 +89,6 @@ class QueueOperator(metaclass=ABCMeta):
     def get_current_obj(self) -> WaitingSummonerObj | WaitingSummonerMatchObj | None:
         if self.is_burst_switch_on and self.calc_waiting_ratio() < 0.1:
             self.burst_switch_off()
-            return self.waiting_status.pop()
 
         elif self.is_burst_switch_on:
             return self.working_status.pop()

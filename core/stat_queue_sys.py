@@ -40,7 +40,7 @@ class QueueStatus:
         self.deque.extend(objs)
         self.count += len(objs)
 
-    def append_left(self, obj: WaitingSummonerObj | WaitingSummonerMatchObj):
+    def append(self, obj: WaitingSummonerObj | WaitingSummonerMatchObj):
         self.deque.append(obj)
         self.add_count()
 

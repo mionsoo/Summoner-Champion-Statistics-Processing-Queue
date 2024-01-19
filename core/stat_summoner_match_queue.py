@@ -13,8 +13,19 @@ from core.stat_queue_sys import QueueOperator
 
 from helper.stat_summoner_match import wait_func, work_func
 
-from model.summoner_model import WaitingSummonerMatchObj
-from typing import Callable
+from model.summoner_model import WaitingSummonerMatchObj, WaitingSummonerObj
+from typing import Callable, Tuple
+from datetime import datetime
+
+
+def wrap_summoner_obj(obj: Tuple[str, str, int, datetime]) -> WaitingSummonerObj:
+    platform_id, puu_id, status, reg_datetime = obj
+    return WaitingSummonerObj(
+        platform_id=platform_id,
+        puu_id=puu_id,
+        status=status,
+        reg_datetime=reg_datetime
+    )
 
 
 def wrap_summoner_match_obj(obj) -> WaitingSummonerMatchObj:
@@ -31,45 +42,30 @@ def wrap_summoner_match_obj(obj) -> WaitingSummonerMatchObj:
 class SummonerMatchQueueOperator(QueueOperator):
     def update_new_data(self):
         with connect_sql_aurora(RDS_INSTANCE_TYPE.READ) as conn:
-            new_waiting = set(sql_execute(
-                'SELECT platform_id, puu_id, status, reg_datetime, match_id '
-                'from b2c_summoner_match_queue '
-                f'WHERE status={Status.Waiting.code} '
-                f'order by reg_datetime desc ',
-                conn)
-            )
             new_working = set(sql_execute(
-                'SELECT platform_id, puu_id, status, reg_datetime, match_id '
-                'from b2c_summoner_match_queue '
+                'SELECT platform_id, puu_id, status, reg_datetime '
+                'from b2c_summoner_queue '
                 f'WHERE status={Status.Working.code} '
-                f'order by reg_datetime desc ',
+                f'order by reg_datetime asc ',
                 conn)
             )
-
-        exist_waiting = {tuple(x.__dict__.values()) for x in self.waiting_status.deque}
-        new_waiting_removed_dupl = list(map(wrap_summoner_match_obj, new_waiting.difference(exist_waiting)))
 
         exist_working = {tuple(x.__dict__.values()) for x in self.working_status.deque}
-        new_working_removed_dupl = list(map(wrap_summoner_match_obj, new_working.difference(exist_working)))
+        new_working_removed_dupl = list(map(wrap_summoner_obj, new_working.difference(exist_working)))
 
         s = time.time()
-        if len(exist_waiting) == 0:
-            self.waiting_status.reinit(sorted(new_waiting_removed_dupl,key=lambda x: x.reg_datetime))
-        else:
-            self.waiting_status.extend(new_waiting_removed_dupl)
-
         if len(exist_working) == 0:
             self.working_status.reinit(sorted(new_working_removed_dupl, key=lambda x: x.reg_datetime))
         else:
-            self.working_status.extend(new_waiting_removed_dupl)
+            self.working_status.extend(new_working_removed_dupl)
 
         print(f'{get_current_datetime()} | Updated ({time.time() - s} processed)')
 
     @logging_time
-    def process_job(self, current_obj: WaitingSummonerMatchObj):
+    async def process_job(self, current_obj: WaitingSummonerMatchObj):
         try:
             suitable_func = self.search_suitable_process_func(current_obj)
-            func_return = suitable_func(current_obj)
+            func_return = await suitable_func(current_obj)
             changed_current_obj_status_code = get_changed_current_obj_status(current_obj, func_return)
 
         except Exception:
@@ -88,8 +84,8 @@ class SummonerMatchQueueOperator(QueueOperator):
                     f'WHERE platform_id = {repr(current_obj.platform_id)} '
                     f'and puu_id = {repr(current_obj.puu_id)} '
                     f'and status = {current_obj.status} '
-                    f'and reg_datetime = "{str(current_obj.reg_datetime)}"',
-                    conn
+                    # f'and reg_datetime = "{str(current_obj.reg_datetime)}"'
+                    ,conn
                 )
                 conn.commit()
             self.update_last_obj(current_obj)
@@ -97,9 +93,19 @@ class SummonerMatchQueueOperator(QueueOperator):
 
 
     @staticmethod
-    def search_suitable_process_func(current_obj: WaitingSummonerMatchObj)-> Callable:
+    def search_suitable_process_func(current_obj: WaitingSummonerMatchObj):
         if current_obj.status == Status.Waiting.code:
             return wait_func
         elif current_obj.status == Status.Working.code:
             return work_func
 
+    def print_remain(self):
+        with connect_sql_aurora(RDS_INSTANCE_TYPE.READ) as conn:
+            count = sql_execute(
+                f'SELECT count(*) '
+                f'FROM b2c_summoner_match_queue '
+                f'WHERE status = {Status.Working.code}'
+                , conn
+            )
+        print(f'\n - Remain\n'
+              f'\tMatch Waiting: {count[0][0]} ')

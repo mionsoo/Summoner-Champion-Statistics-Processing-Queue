@@ -29,16 +29,6 @@ def wrap_summoner_obj(obj: Tuple[str, str, int, datetime]) -> WaitingSummonerObj
     )
 
 
-def selection_sort(arr: List[WaitingSummonerObj | WaitingSummonerMatchObj]):
-    for i in range(len(arr) - 1):
-        min_idx = i
-        for j in range(i + 1, len(arr)):
-            if arr[j].reg_datetime < arr[min_idx].reg_datetime:
-                min_idx = j
-        arr[i], arr[min_idx] = arr[min_idx], arr[i]
-    return arr
-
-
 class SummonerQueueOperator(QueueOperator):
     def update_new_data(self):
         with connect_sql_aurora(RDS_INSTANCE_TYPE.READ) as conn:
@@ -119,3 +109,8 @@ class SummonerQueueOperator(QueueOperator):
             return wait_func
         elif current_obj.status == Status.Working.code:
             return work_func
+
+    def print_remain(self):
+        print(f'\n - Remain\n'
+              f'\tWaiting: {self.waiting_status.count} ({round(self.calc_waiting_ratio() * 100, 2)}%)\n'
+              f'\tWorking: {self.working_status.count} ({round(self.calc_working_ratio() * 100, 2)}%)')

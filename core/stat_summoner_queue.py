@@ -107,7 +107,7 @@ class SummonerQueueOperator(QueueOperator):
                 )
                 conn.commit()
 
-            if self.last_obj == current_obj and self.last_change_status_code == current_obj.status:
+            if self.last_obj == current_obj and self.last_change_status_code == changed_current_obj_status_code.status:
                 time.sleep(10)
 
             self.update_last_obj(current_obj)

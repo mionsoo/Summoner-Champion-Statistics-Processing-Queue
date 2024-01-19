@@ -3,7 +3,7 @@ name: B2C Deeplol Riot Api Queue
 on:
   push:
     branches:
-      - match
+      - main
 
 jobs:
   cd_part:

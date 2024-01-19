@@ -8,9 +8,6 @@ from common.const import Status
 from core.stat_summoner_queue import SummonerQueueOperator
 from core.stat_queue_sys import QueueComment
 
-import time
-
-
 def queue_system():
     '''
     TODO:

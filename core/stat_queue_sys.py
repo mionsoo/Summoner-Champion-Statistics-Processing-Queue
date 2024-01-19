@@ -63,6 +63,13 @@ class QueueOperator(metaclass=ABCMeta):
         self.last_obj = None
         self.last_change_status_code = None
         self.ratio = (0.0, 0.0)
+        self.is_burst_switch_on = False
+
+    def burst_switch_off(self):
+        self.is_burst_switch_on = False
+
+    def burst_switch_on(self):
+        self.is_burst_switch_on = True
 
     def calc_total_count(self):
         return self.waiting_status.count + self.working_status.count
@@ -80,10 +87,16 @@ class QueueOperator(metaclass=ABCMeta):
         self.last_change_status_code = current_change_status_code
 
     def get_current_obj(self) -> WaitingSummonerObj | WaitingSummonerMatchObj | None:
-        if self.calc_working_ratio() > 0.3:
+        if self.is_burst_switch_on and self.calc_waiting_ratio() < 0.1:
+            self.burst_switch_off()
+
+        elif self.is_burst_switch_on:
             return self.working_status.pop()
 
-        elif self.waiting_status.count >= 1:
+        elif not self.is_burst_switch_on and self.calc_working_ratio() > 0.3:
+            self.burst_switch_on()
+
+        if self.waiting_status.count >= 1:
             return self.waiting_status.pop()
 
         elif self.working_status.count >= 1:

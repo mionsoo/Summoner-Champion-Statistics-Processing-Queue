@@ -75,7 +75,7 @@ class QueueOperator(metaclass=ABCMeta):
         return self.waiting_status.count + self.working_status.count
 
     def calc_waiting_ratio(self):
-        return self.waiting_status.count /  self.calc_total_count()
+        return self.waiting_status.count / self.calc_total_count()
 
     def calc_working_ratio(self):
         return self.working_status.count / self.calc_total_count()
@@ -93,7 +93,7 @@ class QueueOperator(metaclass=ABCMeta):
         elif self.is_burst_switch_on:
             return self.working_status.pop()
 
-        elif not self.is_burst_switch_on and self.calc_working_ratio() > 0.3:
+        elif not self.is_burst_switch_on and self.calc_working_ratio() > 0.2:
             self.burst_switch_on()
 
         if self.waiting_status.count >= 1:
@@ -124,7 +124,6 @@ class QueueOperator(metaclass=ABCMeta):
     def search_suitable_process_func(current_obj: WaitingSummonerObj | WaitingSummonerMatchObj):
         pass
 
+    @abstractmethod
     def print_remain(self):
-        print(f'\n - Remain\n'
-              f'\tWaiting: {self.waiting_status.count} ({round(self.calc_waiting_ratio()*100, 2)}%)\n'
-              f'\tWorking: {self.working_status.count} ({round(self.calc_working_ratio()*100, 2)}%)')
+        pass

@@ -5,9 +5,10 @@ sys.path.append("/usr/src/app")
 from common.utils import get_current_datetime
 from core.stat_summoner_match_queue import SummonerMatchQueueOperator
 from core.stat_queue_sys import QueueComment
+import asyncio
 
 
-def main():
+async def main():
     queue_comment = QueueComment()
     queue_op = SummonerMatchQueueOperator()
 
@@ -23,7 +24,7 @@ def main():
             elif queue_op.is_data_exists():
                 current_obj = queue_op.get_current_obj()
                 if current_obj is not None:
-                    queue_op.process_job(current_obj)
+                    await queue_op.process_job(current_obj)
                     queue_op.print_remain()
                     print('------------------------------\n')
 
@@ -35,7 +36,7 @@ def main():
 
 if __name__ == '__main__':
     try:
-        main()
+        asyncio.run(main())
     except Exception as e:
         print(e)
 

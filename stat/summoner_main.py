@@ -43,10 +43,7 @@ def queue_system():
 
     while True:
         try:
-            if queue_op.last_obj is not None and queue_op.last_obj.status == Status.Working.code:
-                pass
-            else:
-                queue_op.update_new_data()
+            queue_op.update_new_data()
 
             if queue_op.is_all_queue_is_empty() and queue_comment.is_need_to_print_empty():
                 print(f'{get_current_datetime()} | Queue is Empty')

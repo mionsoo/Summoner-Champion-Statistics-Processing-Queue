@@ -82,7 +82,10 @@ class QueueOperator(metaclass=ABCMeta):
 
 
     def calc_working_ratio(self):
-        return self.working_status.count / self.calc_total_count()
+        if self.calc_total_count():
+            return self.working_status.count / self.calc_total_count()
+        else:
+            return 0
 
     def update_last_obj(self, current_obj: WaitingSummonerObj | WaitingSummonerMatchObj):
         self.last_obj = current_obj

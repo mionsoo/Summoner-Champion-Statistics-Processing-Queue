@@ -18,13 +18,12 @@ from typing import Callable, Tuple
 from datetime import datetime
 
 
-def wrap_summoner_obj(obj: Tuple[str, str, int, datetime]) -> WaitingSummonerObj:
-    platform_id, puu_id, status, reg_datetime = obj
+def wrap_summoner_obj(obj: Tuple[str, str]) -> WaitingSummonerObj:
+    platform_id, puu_id = obj
     return WaitingSummonerObj(
         platform_id=platform_id,
         puu_id=puu_id,
-        status=status,
-        reg_datetime=reg_datetime
+        status=2
     )
 
 

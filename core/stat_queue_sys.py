@@ -80,6 +80,7 @@ class QueueOperator(metaclass=ABCMeta):
         else:
             return 0
 
+
     def calc_working_ratio(self):
         return self.working_status.count / self.calc_total_count()
 

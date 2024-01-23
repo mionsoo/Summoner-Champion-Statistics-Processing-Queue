@@ -69,6 +69,25 @@ class SummonerQueueOperator(QueueOperator):
 
         print(f'{get_current_datetime()} | Updated ({time.time()-s} processed)')
 
+    def get_current_obj(self) -> WaitingSummonerObj | WaitingSummonerMatchObj | None:
+        if self.is_burst_switch_on and self.calc_working_ratio() < 0.1:
+            self.burst_switch_off()
+
+        elif self.is_burst_switch_on:
+            return self.working_status.pop()
+
+        elif not self.is_burst_switch_on and self.calc_working_ratio() > 0.4:
+            self.burst_switch_on()
+
+        if self.waiting_status.count >= 1:
+            return self.waiting_status.pop()
+
+        elif self.working_status.count >= 1:
+            return self.working_status.pop()
+
+        else:
+            return None
+
     @logging_time
     def process_job(self, current_obj: WaitingSummonerObj):
         try:

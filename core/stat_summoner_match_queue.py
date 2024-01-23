@@ -1,3 +1,4 @@
+import asyncio
 import time
 import traceback
 
@@ -23,7 +24,7 @@ def wrap_summoner_obj(obj: Tuple[str, str]) -> WaitingSummonerObj:
     return WaitingSummonerObj(
         platform_id=platform_id,
         puu_id=puu_id,
-        status=2
+        status=Status.Working.code
     )
 
 
@@ -58,7 +59,17 @@ class SummonerMatchQueueOperator(QueueOperator):
         else:
             self.working_status.extend(new_working_removed_dupl)
 
-        print(f'{get_current_datetime()} | Updated ({time.time() - s} processed)')
+
+    async def get_current_obj(self) -> WaitingSummonerObj | WaitingSummonerMatchObj | None:
+        await asyncio.sleep(0)
+        if self.waiting_status.count >= 1:
+            return self.waiting_status.pop()
+
+        elif self.working_status.count >= 1:
+            return self.working_status.pop()
+
+        else:
+            return None
 
     @logging_time
     async def process_job(self, current_obj: WaitingSummonerMatchObj):
@@ -98,7 +109,8 @@ class SummonerMatchQueueOperator(QueueOperator):
         elif current_obj.status == Status.Working.code:
             return work_func
 
-    def print_remain(self):
+    async def print_remain(self):
+        await asyncio.sleep(0)
         with connect_sql_aurora(RDS_INSTANCE_TYPE.READ) as conn:
             count = sql_execute(
                 f'SELECT count(*) '

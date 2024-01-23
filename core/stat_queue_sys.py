@@ -75,7 +75,11 @@ class QueueOperator(metaclass=ABCMeta):
         return self.waiting_status.count + self.working_status.count
 
     def calc_waiting_ratio(self):
-        return self.waiting_status.count / self.calc_total_count()
+        if self.calc_total_count():
+            return self.waiting_status.count / self.calc_total_count()
+        else:
+            return 0
+
 
     def calc_working_ratio(self):
         return self.working_status.count / self.calc_total_count()

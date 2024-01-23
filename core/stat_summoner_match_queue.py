@@ -43,8 +43,8 @@ class SummonerMatchQueueOperator(QueueOperator):
     def update_new_data(self):
         with connect_sql_aurora(RDS_INSTANCE_TYPE.READ) as conn:
             new_working = set(sql_execute(
-                'SELECT platform_id, puu_id, status, reg_datetime '
-                'from b2c_summoner_queue '
+                'SELECT distinct platform_id, puu_id '
+                'from b2c_summoner_match_queue '
                 f'WHERE status={Status.Working.code} '
                 f'order by reg_datetime asc ',
                 conn)

@@ -90,6 +90,7 @@ class QueueOperator(metaclass=ABCMeta):
     def update_last_change_status(self, current_change_status_code: int):
         self.last_change_status_code = current_change_status_code
 
+    @abstractmethod
     def get_current_obj(self) -> WaitingSummonerObj | WaitingSummonerMatchObj | None:
         if self.is_burst_switch_on and self.calc_working_ratio() < 0.1:
             self.burst_switch_off()

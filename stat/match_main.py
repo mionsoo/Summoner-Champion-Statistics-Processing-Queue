@@ -3,6 +3,7 @@ import traceback
 import sys
 sys.path.append("/usr/src/app")
 from common.utils import get_current_datetime
+from common.const import Status
 from core.stat_summoner_match_queue import SummonerMatchQueueOperator
 from core.stat_queue_sys import QueueComment
 import asyncio
@@ -22,10 +23,10 @@ async def main():
                 queue_comment.empty_printed()
 
             elif queue_op.is_data_exists():
-                current_obj = queue_op.get_current_obj()
+                current_obj = await queue_op.get_current_obj()
                 if current_obj is not None:
                     await queue_op.process_job(current_obj)
-                    queue_op.print_remain()
+                    await queue_op.print_remain()
                     print('------------------------------\n')
 
                 queue_comment.print_empty()

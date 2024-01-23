@@ -37,7 +37,7 @@ async def work_func(current_obj: WaitingSummonerObj) -> int | None:
     if sum(map(lambda x: x.split(', ')[-1] == 'insert success', results)) == len(match_ids):
         return None
 
-    return 1
+    return None
 
 
 async def request_stats_async(current_obj, match_id, client):

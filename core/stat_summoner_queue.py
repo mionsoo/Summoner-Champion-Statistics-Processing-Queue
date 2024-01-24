@@ -48,7 +48,6 @@ class SummonerQueueOperator(QueueOperator):
                 conn)
             )
 
-        s = time.time()
         exist_waiting = {tuple(x.__dict__.values()) for x in self.waiting_status.deque}
         new_waiting_removed_dupl = list(map(wrap_summoner_obj, new_waiting.difference(exist_waiting)))
         sorted_new_waiting = list(sorted(new_waiting_removed_dupl, key=lambda x: x.reg_datetime))
@@ -66,8 +65,6 @@ class SummonerQueueOperator(QueueOperator):
             self.working_status.reinit(sorted_new_working)
         else:
             self.working_status.extend(sorted_new_working)
-
-        print(f'{get_current_datetime()} | Updated ({time.time()-s} processed)')
 
     def get_current_obj(self) -> WaitingSummonerObj | WaitingSummonerMatchObj | None:
         if self.is_burst_switch_on and self.calc_working_ratio() < 0.1:

@@ -41,12 +41,12 @@ def wrap_summoner_match_obj(obj) -> WaitingSummonerMatchObj:
 
 class SummonerMatchQueueOperator(QueueOperator):
     def update_new_data(self):
-        new_working = self.dbconn.select(
+        new_working = set(self.dbconn.select(
             'SELECT distinct platform_id, puu_id '
             'FROM b2c_summoner_match_queue '
             f'WHERE status={Status.Working.code} '
             f'ORDER BY reg_datetime ASC '
-        )
+        ))
         # with connect_sql_aurora(RDS_INSTANCE_TYPE.READ) as conn:
         #     new_working = set(sql_execute(
         #         'SELECT distinct platform_id, puu_id '

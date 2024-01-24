@@ -1,3 +1,4 @@
+from core.db_connection import DBConn
 from model.summoner_model import WaitingSummonerObj, WaitingSummonerMatchObj
 from abc import *
 
@@ -58,12 +59,15 @@ class QueueStatus:
 
 class QueueOperator(metaclass=ABCMeta):
     def __init__(self):
+        self.dbconn = DBConn()
         self.waiting_status = QueueStatus(criterion=Status.Waiting.code)
         self.working_status = QueueStatus(criterion=Status.Working.code)
         self.last_obj = None
         self.last_change_status_code = None
         self.ratio = (0.0, 0.0)
         self.is_burst_switch_on = False
+
+        self.dbconn.make_conn()
 
     def burst_switch_off(self):
         self.is_burst_switch_on = False

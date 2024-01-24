@@ -31,22 +31,35 @@ def wrap_summoner_obj(obj: Tuple[str, str, int, datetime]) -> WaitingSummonerObj
 
 class SummonerQueueOperator(QueueOperator):
     def update_new_data(self):
-        with connect_sql_aurora(RDS_INSTANCE_TYPE.READ) as conn:
-            new_waiting = set(sql_execute(
-                'SELECT platform_id, puu_id, status, reg_datetime '
-                'from b2c_summoner_queue '
-                f'WHERE status={Status.Waiting.code} '
-                f'order by reg_datetime asc ',
-                conn)
-            )
+        new_waiting = set(self.dbconn.select(
+            'SELECT platform_id, puu_id, status, reg_datetime '
+            'FROM b2c_summoner_queue '
+            f'WHERE status={Status.Waiting.code} '
+            f'ORDER BY reg_datetime ASC '
+        ))
 
-            new_working = set(sql_execute(
-                'SELECT platform_id, puu_id, status, reg_datetime '
-                'from b2c_summoner_queue '
-                f'WHERE status={Status.Working.code} '
-                f'order by reg_datetime asc ',
-                conn)
-            )
+        new_working = set(self.dbconn.select(
+            'SELECT platform_id, puu_id, status, reg_datetime '
+            'FROM b2c_summoner_queue '
+            f'WHERE status={Status.Working.code} '
+            f'ORDER BY reg_datetime ASC '
+        ))
+        # with connect_sql_aurora(RDS_INSTANCE_TYPE.READ) as conn:
+        #     new_waiting = set(sql_execute(
+        #         'SELECT platform_id, puu_id, status, reg_datetime '
+        #         'from b2c_summoner_queue '
+        #         f'WHERE status={Status.Waiting.code} '
+        #         f'order by reg_datetime asc ',
+        #         conn)
+        #     )
+        #
+        #     new_working = set(sql_execute(
+        #         'SELECT platform_id, puu_id, status, reg_datetime '
+        #         'from b2c_summoner_queue '
+        #         f'WHERE status={Status.Working.code} '
+        #         f'order by reg_datetime asc ',
+        #         conn)
+        #     )
 
         exist_waiting = {tuple(x.__dict__.values()) for x in self.waiting_status.deque}
         new_waiting_removed_dupl = list(map(wrap_summoner_obj, new_waiting.difference(exist_waiting)))
@@ -101,17 +114,25 @@ class SummonerQueueOperator(QueueOperator):
             print(traceback.format_exc())
 
         finally:
-            with connect_sql_aurora(RDS_INSTANCE_TYPE.READ) as conn:
-                sql_execute_dict(
-                    'UPDATE b2c_summoner_queue '
-                    f'SET status = {changed_current_obj_status_code} '
-                    f'WHERE platform_id = {repr(current_obj.platform_id)} '
-                    f'and puu_id = {repr(current_obj.puu_id)} '
-                    f'and status = {current_obj.status} '
-                    f'and reg_datetime = "{str(current_obj.reg_datetime)}"',
-                    conn
-                )
-                conn.commit()
+            self.dbconn.update(
+                'UPDATE b2c_summoner_queue '
+                f'SET status = {changed_current_obj_status_code} '
+                f'WHERE platform_id = {repr(current_obj.platform_id)} '
+                f'and puu_id = {repr(current_obj.puu_id)} '
+                f'and status = {current_obj.status} '
+                f'and reg_datetime = "{str(current_obj.reg_datetime)}"'
+            )
+            # with connect_sql_aurora(RDS_INSTANCE_TYPE.READ) as conn:
+            #     sql_execute_dict(
+            #         'UPDATE b2c_summoner_queue '
+            #         f'SET status = {changed_current_obj_status_code} '
+            #         f'WHERE platform_id = {repr(current_obj.platform_id)} '
+            #         f'and puu_id = {repr(current_obj.puu_id)} '
+            #         f'and status = {current_obj.status} '
+            #         f'and reg_datetime = "{str(current_obj.reg_datetime)}"',
+            #         conn
+            #     )
+            #     conn.commit()
 
             if self.last_obj == current_obj and self.last_change_status_code == changed_current_obj_status_code.status:
                 time.sleep(10)

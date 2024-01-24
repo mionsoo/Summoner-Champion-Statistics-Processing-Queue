@@ -41,24 +41,28 @@ def wrap_summoner_match_obj(obj) -> WaitingSummonerMatchObj:
 
 class SummonerMatchQueueOperator(QueueOperator):
     def update_new_data(self):
-        with connect_sql_aurora(RDS_INSTANCE_TYPE.READ) as conn:
-            new_working = set(sql_execute(
-                'SELECT distinct platform_id, puu_id '
-                'from b2c_summoner_match_queue '
-                f'WHERE status={Status.Working.code} '
-                f'order by reg_datetime asc ',
-                conn)
-            )
+        new_working = self.dbconn.select(
+            'SELECT distinct platform_id, puu_id '
+            'FROM b2c_summoner_match_queue '
+            f'WHERE status={Status.Working.code} '
+            f'ORDER BY reg_datetime ASC '
+        )
+        # with connect_sql_aurora(RDS_INSTANCE_TYPE.READ) as conn:
+        #     new_working = set(sql_execute(
+        #         'SELECT distinct platform_id, puu_id '
+        #         'from b2c_summoner_match_queue '
+        #         f'WHERE status={Status.Working.code} '
+        #         f'order by reg_datetime asc ',
+        #         conn)
+        #     )
 
         exist_working = {tuple(x.__dict__.values()) for x in self.working_status.deque}
         new_working_removed_dupl = list(map(wrap_summoner_obj, new_working.difference(exist_working)))
 
-        s = time.time()
         if len(exist_working) == 0:
             self.working_status.reinit(sorted(new_working_removed_dupl, key=lambda x: x.reg_datetime))
         else:
             self.working_status.extend(new_working_removed_dupl)
-
 
     async def get_current_obj(self) -> WaitingSummonerObj | WaitingSummonerMatchObj | None:
         await asyncio.sleep(0)
@@ -87,17 +91,24 @@ class SummonerMatchQueueOperator(QueueOperator):
             print(traceback.format_exc())
 
         finally:
-            with connect_sql_aurora(RDS_INSTANCE_TYPE.READ) as conn:
-                sql_execute_dict(
-                    'UPDATE b2c_summoner_match_queue '
-                    f'SET status = {changed_current_obj_status_code} '
-                    f'WHERE platform_id = {repr(current_obj.platform_id)} '
-                    f'and puu_id = {repr(current_obj.puu_id)} '
-                    f'and status = {current_obj.status} '
-                    # f'and reg_datetime = "{str(current_obj.reg_datetime)}"'
-                    ,conn
-                )
-                conn.commit()
+            self.dbconn.update(
+                'UPDATE b2c_summoner_match_queue '
+                f'SET status = {changed_current_obj_status_code} '
+                f'WHERE platform_id = {repr(current_obj.platform_id)} '
+                f'and puu_id = {repr(current_obj.puu_id)} '
+                f'and status = {current_obj.status} '
+            )
+            # with connect_sql_aurora(RDS_INSTANCE_TYPE.READ) as conn:
+            #     sql_execute_dict(
+            #         'UPDATE b2c_summoner_match_queue '
+            #         f'SET status = {changed_current_obj_status_code} '
+            #         f'WHERE platform_id = {repr(current_obj.platform_id)} '
+            #         f'and puu_id = {repr(current_obj.puu_id)} '
+            #         f'and status = {current_obj.status} '
+            #         # f'and reg_datetime = "{str(current_obj.reg_datetime)}"'
+            #         ,conn
+            #     )
+            #     conn.commit()
             self.update_last_obj(current_obj)
             self.update_last_change_status(changed_current_obj_status_code)
 
@@ -111,12 +122,11 @@ class SummonerMatchQueueOperator(QueueOperator):
 
     async def print_remain(self):
         await asyncio.sleep(0)
-        with connect_sql_aurora(RDS_INSTANCE_TYPE.READ) as conn:
-            count = sql_execute(
-                f'SELECT count(*) '
-                f'FROM b2c_summoner_match_queue '
-                f'WHERE status = {Status.Working.code}'
-                , conn
-            )
+        count = self.dbconn.select(
+            f'SELECT count(*) '
+            f'FROM b2c_summoner_match_queue '
+            f'WHERE status = {Status.Working.code}'
+        )
+
         print(f'\n - Remain\n'
               f'\tMatch Waiting: {count[0][0]} ')

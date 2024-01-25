@@ -8,6 +8,7 @@ from common.db import (
     RDS_INSTANCE_TYPE,
     sql_execute,
     sql_execute_dict,
+    connect_sql_aurora_async
 )
 from common.utils import get_changed_current_obj_status, get_current_datetime, logging_time
 from core.stat_queue_sys import QueueOperator
@@ -40,37 +41,33 @@ def wrap_summoner_match_obj(obj) -> WaitingSummonerMatchObj:
 
 
 class SummonerMatchQueueOperator(QueueOperator):
-    def update_new_data(self):
-        new_working = set(self.dbconn.select(
-            'SELECT distinct platform_id, puu_id '
-            'FROM b2c_summoner_match_queue '
-            f'WHERE status={Status.Working.code} '
-            f'ORDER BY reg_datetime ASC '
-        ))
-        # with connect_sql_aurora(RDS_INSTANCE_TYPE.READ) as conn:
-        #     new_working = set(sql_execute(
-        #         'SELECT distinct platform_id, puu_id '
-        #         'from b2c_summoner_match_queue '
-        #         f'WHERE status={Status.Working.code} '
-        #         f'order by reg_datetime asc ',
-        #         conn)
-        #     )
+    async def update_new_data(self):
+        conn = await connect_sql_aurora_async(RDS_INSTANCE_TYPE.READ)
+        async with conn.cursor() as cursor:
+            await cursor.execute(
+                'SELECT distinct platform_id, puu_id '
+                'FROM b2c_summoner_match_queue '
+                f'WHERE status={Status.Working.code} '
+                f'ORDER BY reg_datetime ASC '
+            )
+
+            result = await cursor.fetchall()
+            new_working = set(result)
 
         exist_working = {tuple(x.__dict__.values()) for x in self.working_status.deque}
         new_working_removed_dupl = list(map(wrap_summoner_obj, new_working.difference(exist_working)))
 
         if len(exist_working) == 0:
-            self.working_status.reinit(sorted(new_working_removed_dupl, key=lambda x: x.reg_datetime))
+            await self.working_status.reinit(sorted(new_working_removed_dupl, key=lambda x: x.reg_datetime))
         else:
-            self.working_status.extend(new_working_removed_dupl)
+            await self.working_status.extend(new_working_removed_dupl)
 
-    async def get_current_obj(self) -> WaitingSummonerObj | WaitingSummonerMatchObj | None:
-        await asyncio.sleep(0)
+    async def get_current_obj(self, pop_count=0) -> WaitingSummonerObj | WaitingSummonerMatchObj | None:
         if self.waiting_status.count >= 1:
-            return self.waiting_status.pop()
+            return await self.waiting_status.pop()
 
         elif self.working_status.count >= 1:
-            return self.working_status.pop()
+            return await self.working_status.pop()
 
         else:
             return None
@@ -80,35 +77,28 @@ class SummonerMatchQueueOperator(QueueOperator):
         try:
             suitable_func = self.search_suitable_process_func(current_obj)
             func_return = await suitable_func(current_obj)
-            changed_current_obj_status_code = get_changed_current_obj_status(current_obj, func_return)
+            changed_current_obj_status_code = await get_changed_current_obj_status(current_obj, func_return)
 
         except Exception:
             changed_current_obj_status_code = Status.Error.code
             if current_obj.status == Status.Waiting.code:
-                self.waiting_status.append(current_obj)
+                await self.waiting_status.append(current_obj)
             elif current_obj.status == Status.Working.code:
-                self.working_status.append(current_obj)
+                await self.working_status.append(current_obj)
             print(traceback.format_exc())
 
         finally:
-            self.dbconn.update(
-                'UPDATE b2c_summoner_match_queue '
-                f'SET status = {changed_current_obj_status_code} '
-                f'WHERE platform_id = {repr(current_obj.platform_id)} '
-                f'and puu_id = {repr(current_obj.puu_id)} '
-                f'and status = {current_obj.status} '
-            )
-            # with connect_sql_aurora(RDS_INSTANCE_TYPE.READ) as conn:
-            #     sql_execute_dict(
-            #         'UPDATE b2c_summoner_match_queue '
-            #         f'SET status = {changed_current_obj_status_code} '
-            #         f'WHERE platform_id = {repr(current_obj.platform_id)} '
-            #         f'and puu_id = {repr(current_obj.puu_id)} '
-            #         f'and status = {current_obj.status} '
-            #         # f'and reg_datetime = "{str(current_obj.reg_datetime)}"'
-            #         ,conn
-            #     )
-            #     conn.commit()
+            conn = await connect_sql_aurora_async(RDS_INSTANCE_TYPE.READ)
+            async with conn.cursor() as cursor:
+                await cursor.execute(
+                    'UPDATE b2c_summoner_match_queue '
+                    f'SET status = {changed_current_obj_status_code} '
+                    f'WHERE platform_id = {repr(current_obj.platform_id)} '
+                    f'and puu_id = {repr(current_obj.puu_id)} '
+                    f'and status = {current_obj.status} '
+                )
+                await conn.commit()
+
             self.update_last_obj(current_obj)
             self.update_last_change_status(changed_current_obj_status_code)
 
@@ -122,11 +112,15 @@ class SummonerMatchQueueOperator(QueueOperator):
 
     async def print_remain(self):
         await asyncio.sleep(0)
-        count = self.dbconn.select(
-            f'SELECT count(*) '
-            f'FROM b2c_summoner_match_queue '
-            f'WHERE status = {Status.Working.code}'
-        )
+        conn = await connect_sql_aurora_async(RDS_INSTANCE_TYPE.READ)
+        async with conn.cursor() as cursor:
+            await cursor.execute(
+                f'SELECT count(*) '
+                f'FROM b2c_summoner_match_queue '
+                f'WHERE status = {Status.Working.code}'
+            )
+            count = await cursor.fetchone()
+
 
         print(f'\n - Remain\n'
-              f'\tMatch Waiting: {count[0][0]} ')
+              f'\tMatch Waiting: {count[0]} ')

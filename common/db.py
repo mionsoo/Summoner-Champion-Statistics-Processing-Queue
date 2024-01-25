@@ -3,6 +3,8 @@ from os import path, environ
 import boto3
 import os
 import pymysql
+
+import aiomysql
 from dataclasses import asdict
 
 
@@ -120,3 +122,14 @@ def sql_execute_dict(query, conn):
     cursor.execute(query)
     result = cursor.fetchall()
     return result
+
+
+async def connect_sql_aurora_async(instance_type):
+    host_url = get_rds_instance_host(instance_type)
+    return await aiomysql.connect(
+        host=host_url,
+        user='dbmasteruser',
+        password=db_pass,
+        db=conf_dict.get('AURORA_DB'),
+        charset='utf8mb4'
+    )

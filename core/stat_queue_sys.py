@@ -1,3 +1,5 @@
+import asyncio
+
 from core.db_connection import DBConn
 from model.summoner_model import WaitingSummonerObj, WaitingSummonerMatchObj
 from abc import *
@@ -27,7 +29,8 @@ class QueueStatus:
         self.count = 0
         self.deque: Deque[WaitingSummonerObj | WaitingSummonerMatchObj] = deque()
 
-    def reinit(self, objs: List[WaitingSummonerObj | WaitingSummonerMatchObj]):
+    async def reinit(self, objs: List[WaitingSummonerObj | WaitingSummonerMatchObj]):
+        await asyncio.sleep(0)
         self.deque = deque(objs)
         self.count = len(self.deque)
 
@@ -37,15 +40,20 @@ class QueueStatus:
     def sub_count(self):
         self.count -= 1
 
-    def extend(self, objs: List[WaitingSummonerObj | WaitingSummonerMatchObj]):
+    async def extend(self, objs: List[WaitingSummonerObj | WaitingSummonerMatchObj]):
+        await asyncio.sleep(0)
+
         self.deque.extend(objs)
         self.count += len(objs)
 
-    def append(self, obj: WaitingSummonerObj | WaitingSummonerMatchObj):
+    async def append(self, obj: WaitingSummonerObj | WaitingSummonerMatchObj):
+        await asyncio.sleep(0)
+
         self.deque.append(obj)
         self.add_count()
 
-    def pop(self):
+    async def pop(self):
+        await asyncio.sleep(0)
         try:
             popped_value = self.deque.popleft()
         except IndexError:
@@ -66,8 +74,6 @@ class QueueOperator(metaclass=ABCMeta):
         self.last_change_status_code = None
         self.ratio = (0.0, 0.0)
         self.is_burst_switch_on = False
-
-        self.dbconn.make_conn()
 
     def burst_switch_off(self):
         self.is_burst_switch_on = False
@@ -98,7 +104,7 @@ class QueueOperator(metaclass=ABCMeta):
         self.last_change_status_code = current_change_status_code
 
     @abstractmethod
-    def get_current_obj(self) -> WaitingSummonerObj | WaitingSummonerMatchObj | None:
+    def get_current_obj(self, pop_count=0) -> WaitingSummonerObj | WaitingSummonerMatchObj | None:
         """ Abstract """
 
     def is_all_queue_is_empty(self) -> bool:

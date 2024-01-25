@@ -1,4 +1,5 @@
 from enum import Enum
+
 class Status(Enum):
     Waiting = (0, 'waiting')
     Success = (1, 'success')

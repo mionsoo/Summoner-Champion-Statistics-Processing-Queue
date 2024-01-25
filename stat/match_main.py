@@ -15,7 +15,7 @@ async def main():
 
     while True:
         try:
-            queue_op.update_new_data()
+            await queue_op.update_new_data()
 
             if queue_op.is_all_queue_is_empty() and queue_comment.is_need_to_print_empty():
                 print(f'{get_current_datetime()} | Queue is Empty')

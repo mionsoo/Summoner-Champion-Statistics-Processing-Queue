@@ -1,3 +1,4 @@
+import asyncio
 import traceback
 
 import sys
@@ -8,7 +9,7 @@ from common.const import Status
 from core.stat_summoner_queue import SummonerQueueOperator
 from core.stat_queue_sys import QueueComment
 
-def queue_system():
+async def queue_system():
     '''
     TODO:
         Match API 분당 최대 개수 파악
@@ -37,10 +38,11 @@ def queue_system():
     '''
     queue_comment = QueueComment()
     queue_op = SummonerQueueOperator()
+    # queue_op.dbconn.make_conn()
 
     while True:
         try:
-            queue_op.update_new_data()
+            await queue_op.update_new_data()
 
             if queue_op.is_all_queue_is_empty() and queue_comment.is_need_to_print_empty():
                 print(f'{get_current_datetime()} | Queue is Empty')
@@ -48,10 +50,11 @@ def queue_system():
                 queue_comment.empty_printed()
 
             elif queue_op.is_data_exists():
-                current_obj = queue_op.get_current_obj()
-                print(f'{get_current_datetime()} | ', *current_obj.__dict__.values())
-                if current_obj is not None:
-                    queue_op.process_job(current_obj)
+                current_objs = await queue_op.get_current_obj(10)
+                # print(f'{get_current_datetime()} | ', *current_objs.__dict__.values())
+                if current_objs is not None:
+                    tasks = [asyncio.create_task(queue_op.process_job(current_obj)) for current_obj in current_objs]
+                    await asyncio.gather(*tasks)
                     queue_op.print_remain()
                     print('------------------------------\n')
 
@@ -63,7 +66,7 @@ def queue_system():
 
 if __name__ == '__main__':
     try:
-        queue_system()
+        asyncio.run(queue_system())
     except Exception as e:
         print(e)
 

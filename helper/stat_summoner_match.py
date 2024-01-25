@@ -6,7 +6,7 @@ import asyncio
 from common.utils import get_current_datetime
 from common.const import Status
 from model.summoner_model import WaitingSummonerMatchObj, WaitingSummonerObj
-from common.db import connect_sql_aurora, sql_execute, RDS_INSTANCE_TYPE
+from common.db import connect_sql_aurora, sql_execute, RDS_INSTANCE_TYPE, connect_sql_aurora_async
 
 
 async def wait_func(current_obj: WaitingSummonerMatchObj) -> None:
@@ -16,19 +16,18 @@ async def wait_func(current_obj: WaitingSummonerMatchObj) -> None:
 
 async def work_func(current_obj: WaitingSummonerObj) -> int | None:
     print(f'{get_current_datetime()} | ', *current_obj.__dict__.values())
-    with connect_sql_aurora(RDS_INSTANCE_TYPE.READ) as conn:    
-        match_ids = sum(list(
-            sql_execute(
-                'SELECT match_id '
-                'FROM b2c_summoner_match_queue '
-                f'WHERE puu_id = {repr(current_obj.puu_id)} '
-                f'and platform_id = {repr(current_obj.platform_id)} '
-                f'and status = {Status.Working.code}'
-                , conn
-            )
-        ), ())
+    conn = await connect_sql_aurora_async(RDS_INSTANCE_TYPE.READ)
+    async with conn.cursor() as cursor:
+        await cursor.execute(
+            'SELECT match_id '
+            'FROM b2c_summoner_match_queue '
+            f'WHERE puu_id = {repr(current_obj.puu_id)} '
+            f'and platform_id = {repr(current_obj.platform_id)} '
+            f'and status = {Status.Working.code}'
+        )
+        result = await cursor.fetchall()
+        match_ids = sum(list(result), ())
     print(f'{get_current_datetime()} | Num of requests: {len(match_ids)}\n(', *match_ids,')')
-
 
     async with aiohttp.ClientSession() as client:
         tasks = [asyncio.create_task(request_stats_async(current_obj, match_id, client)) for match_id in match_ids]
@@ -49,7 +48,8 @@ async def request_stats_async(current_obj, match_id, client):
         'batch': 1
     }
     req_headers = {
-        "Referer": 'deeplol.gg'
+        "Referer": 'deeplol.gg',
+        'Content-Type': 'application/json'
     }
     url = 'https://renew.deeplol.gg/match/stats-async'
     async with client.post(url, data=json.dumps(req_data), headers=req_headers) as response:

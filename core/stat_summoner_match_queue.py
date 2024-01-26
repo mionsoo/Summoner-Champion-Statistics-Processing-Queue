@@ -18,7 +18,7 @@ from typing import Tuple
 
 
 def wrap_summoner_obj(obj: Tuple[str, str]) -> WaitingSummonerObj:
-    platform_id, puu_id = obj
+    platform_id, puu_id,*_ = obj
     return WaitingSummonerObj(
         platform_id=platform_id,
         puu_id=puu_id,
@@ -49,10 +49,15 @@ class SummonerMatchQueueOperator(QueueOperator):
             )
 
             result = await cursor.fetchall()
-            new_working = set(result)
+            new_working = {tuple(wrap_summoner_obj(x).__dict__.values()) for x in result}
+
 
         exist_working = {tuple(x.__dict__.values()) for x in self.working_status.deque}
+
+
         new_working_removed_dupl = list(map(wrap_summoner_obj, new_working.difference(exist_working)))
+
+
 
         if len(exist_working) == 0:
             await self.working_status.reinit(sorted(new_working_removed_dupl, key=lambda x: x.reg_datetime))

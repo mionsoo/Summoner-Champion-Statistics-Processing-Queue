@@ -5,10 +5,7 @@ import traceback
 
 from common.const import Status
 from common.db import (
-    connect_sql_aurora,
     RDS_INSTANCE_TYPE,
-    sql_execute,
-    sql_execute_dict,
     connect_sql_aurora_async
 )
 from common.utils import get_changed_current_obj_status, get_current_datetime, logging_time

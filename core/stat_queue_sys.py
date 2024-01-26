@@ -34,10 +34,12 @@ class QueueStatus:
         self.deque = deque(objs)
         self.count = len(self.deque)
 
-    def add_count(self):
+    async def add_count(self):
+        await asyncio.sleep(0)
         self.count += 1
 
-    def sub_count(self):
+    async def sub_count(self):
+        await asyncio.sleep(0)
         self.count -= 1
 
     async def extend(self, objs: List[WaitingSummonerObj | WaitingSummonerMatchObj]):
@@ -50,7 +52,7 @@ class QueueStatus:
         await asyncio.sleep(0)
 
         self.deque.append(obj)
-        self.add_count()
+        await self.add_count()
 
     async def pop(self):
         await asyncio.sleep(0)
@@ -60,7 +62,7 @@ class QueueStatus:
             popped_value = WaitingSummonerObj()
         else:
             if popped_value.status == self.status_criterion:
-                self.sub_count()
+                await self.sub_count()
 
         return popped_value
 
@@ -89,7 +91,6 @@ class QueueOperator(metaclass=ABCMeta):
             return self.waiting_status.count / self.calc_total_count()
         else:
             return 0
-
 
     def calc_working_ratio(self):
         if self.calc_total_count():

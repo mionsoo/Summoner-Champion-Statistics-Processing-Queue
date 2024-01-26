@@ -4,10 +4,7 @@ import traceback
 
 from common.const import Status
 from common.db import (
-    connect_sql_aurora,
     RDS_INSTANCE_TYPE,
-    sql_execute,
-    sql_execute_dict,
     connect_sql_aurora_async
 )
 from common.utils import get_changed_current_obj_status, get_current_datetime, logging_time
@@ -16,8 +13,8 @@ from core.stat_queue_sys import QueueOperator
 from helper.stat_summoner_match import wait_func, work_func
 
 from model.summoner_model import WaitingSummonerMatchObj, WaitingSummonerObj
-from typing import Callable, Tuple
-from datetime import datetime
+from typing import Tuple
+
 
 
 def wrap_summoner_obj(obj: Tuple[str, str]) -> WaitingSummonerObj:

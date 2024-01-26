@@ -6,6 +6,7 @@ import json
 from common.db import (
     sql_execute,
     connect_sql_aurora,
+    connect_sql_aurora_async,
     riot_api_key,
     RDS_INSTANCE_TYPE
 )
@@ -38,21 +39,19 @@ async def wait_func(current_obj: WaitingSummonerObj) -> int | None:
     return 1
 
 
-
-
-
-
-def work_func(current_obj) -> int | None:
-    with connect_sql_aurora(RDS_INSTANCE_TYPE.READ) as conn:
-        not_finished_jobs = sql_execute(
+async def work_func(current_obj) -> int | None:
+    conn = await connect_sql_aurora_async(RDS_INSTANCE_TYPE.READ)
+    async with conn.cursor() as cursor:
+        await cursor.execute(
             'SELECT match_id, status '
             'FROM b2c_summoner_match_queue '
             f'WHERE platform_id={repr(current_obj.platform_id)} '
             f'and puu_id={repr(current_obj.puu_id)} '
             f'and (status != {Status.Success.code} '
-            f'and status != {Status.Error.code})',
-            conn
+            f'and status != {Status.Error.code})'
         )
+
+        not_finished_jobs = await cursor.fetchall()
 
     if len(not_finished_jobs) >= 1:
         return 1

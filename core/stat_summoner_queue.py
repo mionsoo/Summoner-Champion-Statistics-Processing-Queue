@@ -82,13 +82,14 @@ class SummonerQueueOperator(QueueOperator):
             self.burst_switch_on()
 
         if self.waiting_status.count >= 1:
-            return await self.get_n_time_popped_value(self.working_status, pop_count)
+            return await self.get_n_time_popped_value(self.waiting_status, pop_count)
 
         elif self.working_status.count >= 1:
             return await self.get_n_time_popped_value(self.working_status, pop_count)
 
         else:
             return [None]
+
     @staticmethod
     async def get_n_time_popped_value(status_obj: QueueStatus, pop_count) -> List[WaitingSummonerObj | WaitingSummonerMatchObj]:
         if status_obj.count < pop_count:

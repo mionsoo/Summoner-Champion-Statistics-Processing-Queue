@@ -19,7 +19,7 @@ import requests
 host = 'redis_queue' if os.environ["API_ENV"] == "dev" else os.environ['HOST']
 rd = redis.Redis(host=host, port=6379, decode_responses=True)
 
-SERVER_NOT_WORKING = ['TW2']
+SERVER_NOT_WORKING = []
 
 
 class StrEnum(str, Enum):

@@ -8,12 +8,12 @@ from common.db import (
     connect_sql_aurora_async
 )
 from common.utils import get_changed_current_obj_status, get_current_datetime, logging_time
-from core.stat_queue_sys import QueueOperator
+from core.stat_queue_sys import QueueOperator, QueueStatus
 
 from helper.stat_summoner_match import wait_func, work_func
 
 from model.summoner_model import WaitingSummonerMatchObj, WaitingSummonerObj
-from typing import Tuple
+from typing import Tuple, List
 
 
 
@@ -50,31 +50,33 @@ class SummonerMatchQueueOperator(QueueOperator):
 
             result = await cursor.fetchall()
             new_working = {tuple(wrap_summoner_obj(x).__dict__.values()) for x in result}
-
+        conn.close()
 
         exist_working = {tuple(x.__dict__.values()) for x in self.working_status.deque}
-
-
         new_working_removed_dupl = list(map(wrap_summoner_obj, new_working.difference(exist_working)))
-
-
 
         if len(exist_working) == 0:
             await self.working_status.reinit(sorted(new_working_removed_dupl, key=lambda x: x.reg_datetime))
         else:
             await self.working_status.extend(new_working_removed_dupl)
 
-    async def get_current_obj(self, pop_count=0) -> WaitingSummonerObj | WaitingSummonerMatchObj | None:
+    async def get_current_obj(self, pop_count=0) -> List[WaitingSummonerObj | WaitingSummonerMatchObj | None]:
         if self.waiting_status.count >= 1:
-            return await self.waiting_status.pop()
+            return await self.get_n_time_popped_value(self.waiting_status, pop_count)
 
         elif self.working_status.count >= 1:
-            return await self.working_status.pop()
+            return await self.get_n_time_popped_value(self.working_status, pop_count)
 
         else:
-            return None
+            return [None]
 
-    @logging_time
+    @staticmethod
+    async def get_n_time_popped_value(status_obj: QueueStatus, pop_count) -> List[WaitingSummonerObj | WaitingSummonerMatchObj]:
+        if status_obj.count < pop_count:
+            pop_count = pop_count - (pop_count - status_obj.count)
+
+        return [await status_obj.pop() for _ in range(pop_count)]
+
     async def process_job(self, current_obj: WaitingSummonerMatchObj):
         try:
             suitable_func = self.search_suitable_process_func(current_obj)
@@ -83,27 +85,31 @@ class SummonerMatchQueueOperator(QueueOperator):
 
         except Exception:
             changed_current_obj_status_code = Status.Error.code
+
             if current_obj.status == Status.Waiting.code:
                 await self.waiting_status.append(current_obj)
             elif current_obj.status == Status.Working.code:
                 await self.working_status.append(current_obj)
+
             print(traceback.format_exc())
 
         finally:
-            conn = await connect_sql_aurora_async(RDS_INSTANCE_TYPE.READ)
-            async with conn.cursor() as cursor:
-                await cursor.execute(
-                    'UPDATE b2c_summoner_match_queue '
-                    f'SET status = {changed_current_obj_status_code} '
-                    f'WHERE platform_id = {repr(current_obj.platform_id)} '
-                    f'and puu_id = {repr(current_obj.puu_id)} '
-                    f'and status = {current_obj.status} '
-                )
-                await conn.commit()
-
+            await self.update_processed_match_status(changed_current_obj_status_code, current_obj)
             self.update_last_obj(current_obj)
             self.update_last_change_status(changed_current_obj_status_code)
 
+    async def update_processed_match_status(self, changed_current_obj_status_code, current_obj):
+        conn = await connect_sql_aurora_async(RDS_INSTANCE_TYPE.READ)
+        async with conn.cursor() as cursor:
+            await cursor.execute(
+                'UPDATE b2c_summoner_match_queue '
+                f'SET status = {changed_current_obj_status_code} '
+                f'WHERE platform_id = {repr(current_obj.platform_id)} '
+                f'and puu_id = {repr(current_obj.puu_id)} '
+                f'and status = {current_obj.status} '
+            )
+            await conn.commit()
+        conn.close()
 
     @staticmethod
     def search_suitable_process_func(current_obj: WaitingSummonerMatchObj):
@@ -122,7 +128,7 @@ class SummonerMatchQueueOperator(QueueOperator):
                 f'WHERE status = {Status.Working.code}'
             )
             count = await cursor.fetchone()
-
+        conn.close()
 
         print(f'\n - Remain\n'
               f'\tMatch Waiting: {count[0]} ')

@@ -27,7 +27,8 @@ async def work_func(current_obj: WaitingSummonerObj) -> int | None:
         )
         result = await cursor.fetchall()
         match_ids = sum(list(result), ())
-    print(f'{get_current_datetime()} | Num of requests: {len(match_ids)}\n(', *match_ids,')')
+    conn.close()
+    print(f'{get_current_datetime()} | Num of requests: {len(match_ids)}')
 
     async with aiohttp.ClientSession() as client:
         tasks = [asyncio.create_task(request_stats_async(current_obj, match_id, client)) for match_id in match_ids]
@@ -40,7 +41,6 @@ async def work_func(current_obj: WaitingSummonerObj) -> int | None:
 
 
 async def request_stats_async(current_obj, match_id, client):
-    print(match_id)
     req_data = {
         "platform_id": current_obj.platform_id,
         "puu_id": current_obj.puu_id,
@@ -53,6 +53,8 @@ async def request_stats_async(current_obj, match_id, client):
     }
     url = 'https://renew.deeplol.gg/match/stats-async'
     async with client.post(url, data=json.dumps(req_data), headers=req_headers) as response:
+        z = await response.text()
+        print(z)
         r = await response.json()
         return r['msg']
 

@@ -1,16 +1,6 @@
 import aiohttp
 
-import asyncio
-import json
-
-from common.db import (
-    sql_execute,
-    connect_sql_aurora,
-    connect_sql_aurora_async,
-    riot_api_key,
-    RDS_INSTANCE_TYPE
-)
-
+from common.db import connect_sql_aurora_async, RDS_INSTANCE_TYPE
 from common.const import Status
 from model.summoner_model import WaitingSummonerObj
 
@@ -52,10 +42,9 @@ async def work_func(current_obj) -> int | None:
         )
 
         not_finished_jobs = await cursor.fetchall()
+    conn.close()
 
     if len(not_finished_jobs) >= 1:
         return 1
 
     return None
-
-

@@ -9,7 +9,7 @@ from common.db import (
     connect_sql_aurora_async
 )
 from common.utils import get_changed_current_obj_status, get_current_datetime, logging_time
-from core.stat_queue_sys import QueueOperator
+from core.stat_queue_sys import QueueOperator, QueueStatus
 
 from helper.stat_summoner import wait_func, work_func
 
@@ -49,6 +49,7 @@ class SummonerQueueOperator(QueueOperator):
             )
             result = await cursor.fetchall()
             new_working = set(result)
+        conn.close()
 
         exist_waiting = {tuple(x.__dict__.values()) for x in self.waiting_status.deque}
         new_waiting_removed_dupl = list(map(wrap_summoner_obj, new_waiting.difference(exist_waiting)))
@@ -68,28 +69,32 @@ class SummonerQueueOperator(QueueOperator):
         else:
             await self.working_status.extend(sorted_new_working)
 
-    async def get_current_obj(self, pop_count=0) -> List[WaitingSummonerObj | WaitingSummonerMatchObj] | None:
+    async def get_current_obj(self, pop_count=0) -> List[WaitingSummonerObj | WaitingSummonerMatchObj | None]:
         await asyncio.sleep(0)
-        if self.working_status.count < pop_count:
-            pop_count = pop_count - self.working_status.count
 
         if self.is_burst_switch_on and self.calc_working_ratio() < 0.1:
             self.burst_switch_off()
 
         elif self.is_burst_switch_on:
-            return [await self.working_status.pop() for _ in range(pop_count)]
+            return await self.get_n_time_popped_value(self.working_status, pop_count)
 
         elif not self.is_burst_switch_on and self.calc_working_ratio() > 0.4:
             self.burst_switch_on()
 
         if self.waiting_status.count >= 1:
-            return [await self.waiting_status.pop() for _ in range(pop_count)]
+            return await self.get_n_time_popped_value(self.working_status, pop_count)
 
         elif self.working_status.count >= 1:
-            return [await self.working_status.pop() for _ in range(pop_count)]
+            return await self.get_n_time_popped_value(self.working_status, pop_count)
 
         else:
-            return None
+            return [None]
+    @staticmethod
+    async def get_n_time_popped_value(status_obj: QueueStatus, pop_count) -> List[WaitingSummonerObj | WaitingSummonerMatchObj]:
+        if status_obj.count < pop_count:
+            pop_count = pop_count - (pop_count - status_obj.count)
+
+        return [await status_obj.pop() for _ in range(pop_count)]
 
     # @logging_time
     async def process_job(self, current_obj: WaitingSummonerObj):
@@ -118,6 +123,7 @@ class SummonerQueueOperator(QueueOperator):
                     f'and reg_datetime = "{str(current_obj.reg_datetime)}"'
                 )
                 await conn.commit()
+            conn.close()
 
             if self.last_obj == current_obj and self.last_change_status_code == changed_current_obj_status_code.status:
                 time.sleep(10)

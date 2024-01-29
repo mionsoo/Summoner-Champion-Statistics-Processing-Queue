@@ -23,9 +23,12 @@ async def main():
                 queue_comment.empty_printed()
 
             elif queue_op.is_data_exists():
-                current_obj = await queue_op.get_current_obj()
-                if current_obj is not None:
-                    await queue_op.process_job(current_obj)
+                current_objs = await queue_op.get_current_obj(3)
+                if None in current_objs:
+                    pass
+                else:
+                    tasks = [asyncio.create_task(queue_op.process_job(current_obj)) for current_obj in current_objs]
+                    await asyncio.gather(*tasks)
                     await queue_op.print_remain()
                     print('------------------------------\n')
 

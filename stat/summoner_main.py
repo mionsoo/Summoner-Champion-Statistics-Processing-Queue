@@ -39,6 +39,7 @@ async def queue_system():
     queue_comment = QueueComment()
     queue_op = SummonerQueueOperator()
     # queue_op.dbconn.make_conn()
+    434413
 
     while True:
         try:
@@ -50,7 +51,7 @@ async def queue_system():
                 queue_comment.empty_printed()
 
             elif queue_op.is_data_exists():
-                current_objs = await queue_op.get_current_obj(5)
+                current_objs = await queue_op.get_current_obj(3)
                 # print(f'{get_current_datetime()} | ', *current_objs.__dict__.values())
                 if current_objs is not None:
                     tasks = [asyncio.create_task(queue_op.process_job(current_obj)) for current_obj in current_objs]

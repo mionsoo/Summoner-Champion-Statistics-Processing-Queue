@@ -32,42 +32,30 @@ class SummonerQueueOperator(QueueOperator):
     async def update_new_data(self):
         conn = await connect_sql_aurora_async(RDS_INSTANCE_TYPE.READ)
         async with conn.cursor() as cursor:
-            await cursor.execute(
-                'SELECT platform_id, puu_id, status, reg_datetime '
-                'FROM b2c_summoner_queue '
-                f'WHERE status={Status.Waiting.code} '
-                f'ORDER BY reg_datetime ASC '
-            )
-            result = await cursor.fetchall()
-            new_waiting = set(result)
+            await self.add_queue(cursor, self.waiting_status)
+            await self.add_queue(cursor, self.working_status)
 
-            await cursor.execute(
-                'SELECT platform_id, puu_id, status, reg_datetime '
-                'FROM b2c_summoner_queue '
-                f'WHERE status={Status.Working.code} '
-                f'ORDER BY reg_datetime ASC '
-            )
-            result = await cursor.fetchall()
-            new_working = set(result)
         conn.close()
 
-        exist_waiting = {tuple(x.__dict__.values()) for x in self.waiting_status.deque}
-        new_waiting_removed_dupl = list(map(wrap_summoner_obj, new_waiting.difference(exist_waiting)))
-        sorted_new_waiting = list(sorted(new_waiting_removed_dupl, key=lambda x: x.reg_datetime))
+    @staticmethod
+    async def add_queue(cursor, status_obj: QueueStatus):
+        await cursor.execute(
+            'SELECT platform_id, puu_id, status, reg_datetime '
+            'FROM b2c_summoner_queue '
+            f'WHERE status={Status.Waiting.code} '
+            f'ORDER BY reg_datetime ASC '
+        )
+        result = await cursor.fetchall()
+        new_objs = set(result)
 
-        exist_working = {tuple(x.__dict__.values()) for x in self.working_status.deque}
-        new_working_removed_dupl = list(map(wrap_summoner_obj, new_working.difference(exist_working)))
-        sorted_new_working = list(sorted(new_working_removed_dupl, key=lambda x: x.reg_datetime))
+        exist_objs = {tuple(x.__dict__.values()) for x in status_obj.deque}
+        new_objs_removed_dupl = list(map(wrap_summoner_obj, new_objs.difference(exist_objs)))
+        sorted_new_objs = list(sorted(new_objs_removed_dupl, key=lambda x: x.reg_datetime))
 
-        if len(exist_waiting) == 0:
-            await self.waiting_status.reinit(sorted_new_waiting)
+        if len(exist_objs) == 0:
+            await status_obj.reinit(sorted_new_objs)
         else:
-            await self.waiting_status.extend(sorted_new_waiting)
-
-        if len(exist_working) == 0:
-            await self.working_status.reinit(sorted_new_working)
-        else:
-            await self.working_status.extend(sorted_new_working)
+            await status_obj.extend(sorted_new_objs)
 
     async def get_current_obj(self, pop_count=0) -> List[WaitingSummonerObj | WaitingSummonerMatchObj | None]:
         await asyncio.sleep(0)
@@ -126,7 +114,7 @@ class SummonerQueueOperator(QueueOperator):
                 await conn.commit()
             conn.close()
 
-            if self.last_obj == current_obj and self.last_change_status_code == changed_current_obj_status_code.status:
+            if self.last_obj == current_obj and self.last_change_status_code == changed_current_obj_status_code:
                 time.sleep(10)
 
             self.update_last_obj(current_obj)

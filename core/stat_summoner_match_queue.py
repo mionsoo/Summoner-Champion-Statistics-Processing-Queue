@@ -41,24 +41,29 @@ class SummonerMatchQueueOperator(QueueOperator):
     async def update_new_data(self):
         conn = await connect_sql_aurora_async(RDS_INSTANCE_TYPE.READ)
         async with conn.cursor() as cursor:
-            await cursor.execute(
-                'SELECT distinct platform_id, puu_id '
-                'FROM b2c_summoner_match_queue '
-                f'WHERE status={Status.Working.code} '
-                f'ORDER BY reg_datetime ASC '
-            )
+            await self.add_queue(cursor, self.working_status)
 
-            result = await cursor.fetchall()
-            new_working = {tuple(wrap_summoner_obj(x).__dict__.values()) for x in result}
         conn.close()
 
-        exist_working = {tuple(x.__dict__.values()) for x in self.working_status.deque}
-        new_working_removed_dupl = list(map(wrap_summoner_obj, new_working.difference(exist_working)))
+    @staticmethod
+    async def add_queue(cursor, status_obj: QueueStatus):
+        await cursor.execute(
+            'SELECT distinct platform_id, puu_id '
+            'FROM b2c_summoner_match_queue '
+            f'WHERE status={Status.Working.code} '
+            f'ORDER BY reg_datetime ASC '
+        )
+        result = await cursor.fetchall()
+        new_objs = {tuple(wrap_summoner_obj(x).__dict__.values()) for x in result}
 
-        if len(exist_working) == 0:
-            await self.working_status.reinit(sorted(new_working_removed_dupl, key=lambda x: x.reg_datetime))
+        exist_objs = {tuple(x.__dict__.values()) for x in status_obj.deque}
+        new_objs_removed_dupl = list(map(wrap_summoner_obj, new_objs.difference(exist_objs)))
+        sorted_new_objs = sorted(new_objs_removed_dupl, key=lambda x: x.reg_datetime)
+
+        if len(exist_objs) == 0:
+            await status_obj.reinit(sorted_new_objs)
         else:
-            await self.working_status.extend(new_working_removed_dupl)
+            await status_obj.extend(sorted_new_objs)
 
     async def get_current_obj(self, pop_count=0) -> List[WaitingSummonerObj | WaitingSummonerMatchObj | None]:
         if self.waiting_status.count >= 1:

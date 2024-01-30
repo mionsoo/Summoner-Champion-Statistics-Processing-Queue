@@ -42,7 +42,7 @@ class SummonerQueueOperator(QueueOperator):
         await cursor.execute(
             'SELECT platform_id, puu_id, status, reg_datetime '
             'FROM b2c_summoner_queue '
-            f'WHERE status={Status.Waiting.code} '
+            f'WHERE status={Status.Waiting.code if status_obj.status_criterion == Status.Waiting.code else Status.Working.code } '
             f'ORDER BY reg_datetime ASC '
         )
         result = await cursor.fetchall()

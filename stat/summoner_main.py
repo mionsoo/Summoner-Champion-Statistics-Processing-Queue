@@ -1,11 +1,11 @@
 import asyncio
+import time
 import traceback
 
 import sys
 sys.path.append("/usr/src/app")
 
 from common.utils import get_current_datetime
-from common.const import Status
 from core.stat_summoner_queue import SummonerQueueOperator
 from core.stat_queue_sys import QueueComment
 
@@ -38,8 +38,6 @@ async def queue_system():
     '''
     queue_comment = QueueComment()
     queue_op = SummonerQueueOperator()
-    # queue_op.dbconn.make_conn()
-    434413
 
     while True:
         try:

@@ -58,3 +58,4 @@ async def request_stats_async(current_obj, match_id, client):
         r = await response.json()
         return r['msg']
 
+

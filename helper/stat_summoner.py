@@ -1,7 +1,11 @@
+import asyncio
+
 import aiohttp
+import json
 
 from common.db import connect_sql_aurora_async, RDS_INSTANCE_TYPE
 from common.const import Status
+from common.utils import get_current_datetime
 from model.summoner_model import WaitingSummonerObj
 
 
@@ -48,3 +52,49 @@ async def work_func(current_obj) -> int | None:
         return 1
 
     return None
+
+
+async def get_season(client):
+    req_headers = {
+        "Referer": 'deeplol.gg'
+    }
+    url = 'https://renew.deeplol.gg/common/season-list'
+    async with client.get(url, headers=req_headers) as response:
+        r = await response.json()
+        return r['season_list'][0]
+
+
+async def update_summoner_stat_dynamo(current_obj):
+    try:
+        async with aiohttp.ClientSession() as client:
+            season = await get_season(client)
+    except Exception:
+        season = 19
+
+    async with aiohttp.ClientSession() as client:
+        t1 = asyncio.create_task(request_stats(current_obj, 'RANKED', season, client))
+        t2 = asyncio.create_task(request_stats(current_obj, 'ARAM', season, client))
+        t3 = asyncio.create_task(request_stats(current_obj, 'URF', season, client))
+
+        await asyncio.gather(t1, t2, t3)
+    print(f'{get_current_datetime()} | request stats success')
+
+
+
+async def request_stats(current_obj, queue_type, season, client):
+    req_data = {
+        "platform_id": current_obj.platform_id,
+        "puu_id": current_obj.puu_id,
+        "season": season,
+        "queue_type": queue_type
+    }
+    req_headers = {
+        "Referer": 'deeplol.gg',
+        'Content-Type': 'application/json'
+    }
+    url = 'https://renew.deeplol.gg/match/stats'
+    async with client.post(url, data=json.dumps(req_data), headers=req_headers) as response:
+        r = await response.json()
+        if r['msg'] != 'insert success':
+            print('stats: ', r)
+        return r['msg']

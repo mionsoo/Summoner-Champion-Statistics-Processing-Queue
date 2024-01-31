@@ -11,7 +11,7 @@ from common.db import (
 from common.utils import get_changed_current_obj_status, get_current_datetime, logging_time
 from core.stat_queue_sys import QueueOperator, QueueStatus
 
-from helper.stat_summoner import wait_func, work_func
+from helper.stat_summoner import wait_func, work_func, update_summoner_stat_dynamo
 
 from model.summoner_model import WaitingSummonerObj, WaitingSummonerMatchObj
 
@@ -39,10 +39,16 @@ class SummonerQueueOperator(QueueOperator):
 
     @staticmethod
     async def add_queue(cursor, status_obj: QueueStatus):
+
+        if status_obj.status_criterion == Status.Waiting.code:
+            status = Status.Waiting.code
+        else:
+            status = Status.Working.code
+
         await cursor.execute(
             'SELECT platform_id, puu_id, status, reg_datetime '
             'FROM b2c_summoner_queue '
-            f'WHERE status={Status.Waiting.code if status_obj.status_criterion == Status.Waiting.code else Status.Working.code } '
+            f'WHERE status={status} '
             f'ORDER BY reg_datetime ASC '
         )
         result = await cursor.fetchall()
@@ -85,6 +91,7 @@ class SummonerQueueOperator(QueueOperator):
 
         return [await status_obj.pop() for _ in range(pop_count)]
 
+
     # @logging_time
     async def process_job(self, current_obj: WaitingSummonerObj):
         try:
@@ -113,6 +120,9 @@ class SummonerQueueOperator(QueueOperator):
                 )
                 await conn.commit()
             conn.close()
+
+            if current_obj.status == Status.Working.code and changed_current_obj_status_code == Status.Success.code:
+                await update_summoner_stat_dynamo(current_obj)
 
             if self.last_obj == current_obj and self.last_change_status_code == changed_current_obj_status_code:
                 time.sleep(10)

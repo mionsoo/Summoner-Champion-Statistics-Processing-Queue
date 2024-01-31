@@ -33,8 +33,6 @@ async def queue_system():
                 if Match table에서 해당 소환사의 match들 전부 완료인 경우:
                   Summoner Queue Table 해당 소환사 Status 완료로 표시
                                                                     _
-
-
     '''
     queue_comment = QueueComment()
     queue_op = SummonerQueueOperator()

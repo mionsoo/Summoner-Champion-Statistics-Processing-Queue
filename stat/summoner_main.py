@@ -46,7 +46,7 @@ async def queue_system():
                 print(f'{get_current_datetime()} | Queue is Empty')
                 print('------------------------------\n')
                 queue_comment.empty_printed()
-                await asyncio.sleep(60)
+
 
             elif queue_op.is_data_exists():
                 current_objs = await queue_op.get_current_obj(3)

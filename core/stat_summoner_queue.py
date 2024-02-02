@@ -122,8 +122,8 @@ class SummonerQueueOperator(QueueOperator):
             if current_obj.status == Status.Working.code and changed_current_obj_status_code == Status.Success.code:
                 await update_summoner_stat_dynamo(current_obj)
 
-            if self.last_obj == current_obj and self.last_change_status_code == changed_current_obj_status_code:
-                time.sleep(10)
+            # if self.last_obj == current_obj and self.last_change_status_code == changed_current_obj_status_code:
+            #     time.sleep(10)
 
             self.update_last_obj(current_obj)
             self.update_last_change_status(changed_current_obj_status_code)

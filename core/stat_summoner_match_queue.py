@@ -45,25 +45,31 @@ class SummonerMatchQueueOperator(QueueOperator):
 
         conn.close()
 
-    @staticmethod
-    async def add_queue(cursor, status_obj: QueueStatus):
+    async def add_queue(self, cursor, status_obj: QueueStatus):
+        if status_obj.status_criterion == Status.Waiting.code:
+            status = Status.Waiting.code
+            _status_obj = self.waiting_status
+        else:
+            status = Status.Working.code
+            _status_obj = self.working_status
+
         await cursor.execute(
             'SELECT distinct platform_id, puu_id '
             'FROM b2c_summoner_match_queue '
-            f'WHERE status={Status.Working.code} '
+            f'WHERE status={status} '
             f'ORDER BY reg_datetime ASC '
         )
         result = await cursor.fetchall()
         new_objs = {tuple(wrap_summoner_obj(x).__dict__.values()) for x in result}
 
-        exist_objs = {tuple(x.__dict__.values()) for x in status_obj.deque}
+        exist_objs = {tuple(x.__dict__.values()) for x in _status_obj.deque}
         new_objs_removed_dupl = list(map(wrap_summoner_obj, new_objs.difference(exist_objs)))
         sorted_new_objs = sorted(new_objs_removed_dupl, key=lambda x: x.reg_datetime)
 
         if len(exist_objs) == 0:
-            await status_obj.reinit(sorted_new_objs)
+            await _status_obj.reinit(sorted_new_objs)
         else:
-            await status_obj.extend(sorted_new_objs)
+            await _status_obj.extend(sorted_new_objs)
 
     async def get_current_obj(self, pop_count=0) -> List[WaitingSummonerObj | WaitingSummonerMatchObj | None]:
         if self.waiting_status.count >= 1:

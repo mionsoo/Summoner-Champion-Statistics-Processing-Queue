@@ -9,6 +9,7 @@ from common.utils import get_current_datetime
 from core.stat_summoner_queue import SummonerQueueOperator
 from core.stat_queue_sys import QueueComment
 
+
 async def queue_system():
     '''
     TODO:
@@ -45,10 +46,10 @@ async def queue_system():
                 print(f'{get_current_datetime()} | Queue is Empty')
                 print('------------------------------\n')
                 queue_comment.empty_printed()
+                time.sleep(60)
 
             elif queue_op.is_data_exists():
                 current_objs = await queue_op.get_current_obj(3)
-                # print(f'{get_current_datetime()} | ', *current_objs.__dict__.values())
                 if current_objs is not None:
                     tasks = [asyncio.create_task(queue_op.process_job(current_obj)) for current_obj in current_objs]
                     await asyncio.gather(*tasks)
@@ -66,6 +67,3 @@ if __name__ == '__main__':
         asyncio.run(queue_system())
     except Exception as e:
         print(e)
-
-
-

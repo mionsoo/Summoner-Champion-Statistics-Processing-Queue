@@ -91,8 +91,6 @@ class SummonerQueueOperator(QueueOperator):
 
         return [await status_obj.pop() for _ in range(pop_count)]
 
-
-    # @logging_time
     async def process_job(self, current_obj: WaitingSummonerObj):
         try:
             suitable_func = self.search_suitable_process_func(current_obj)

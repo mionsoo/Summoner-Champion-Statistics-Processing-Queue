@@ -42,7 +42,6 @@ class AsyncDBConn:
         except Exception:
             print('sql select error: ', traceback.format_exc())
 
-
     async def insert(self, query):
         try:
             async with self.connection.cursor() as cursor:
@@ -50,7 +49,6 @@ class AsyncDBConn:
             await self.connection.commit()
         except Exception:
             pass
-
 
     def update(self, query):
         sql_execute(query=query, conn=self.connection)

@@ -23,7 +23,7 @@ async def request_stats_async(current_obj, client):
         return r
 
 
-async def wait_func(current_obj: WaitingSummonerObj) -> int | None:
+async def wait_func(current_obj: WaitingSummonerObj, conn=None) -> int | None:
     async with aiohttp.ClientSession() as client:
         result = await request_stats_async(current_obj, client)
 
@@ -33,9 +33,9 @@ async def wait_func(current_obj: WaitingSummonerObj) -> int | None:
     return 1
 
 
-async def work_func(current_obj) -> int | None:
-    conn = await connect_sql_aurora_async(RDS_INSTANCE_TYPE.READ)
-    async with conn.cursor() as cursor:
+async def work_func(current_obj, conn) -> int | None:
+    _conn = await connect_sql_aurora_async(RDS_INSTANCE_TYPE.READ)
+    async with _conn.cursor() as cursor:
         await cursor.execute(
             'SELECT match_id, status '
             'FROM b2c_summoner_match_queue '
@@ -45,8 +45,8 @@ async def work_func(current_obj) -> int | None:
             f'and status != {Status.Error.code})'
         )
 
-        not_finished_jobs = await cursor.fetchall()
-    conn.close()
+    not_finished_jobs = await cursor.fetchall()
+    _conn.close()
 
     if len(not_finished_jobs) >= 1:
         return 1
@@ -78,7 +78,6 @@ async def update_summoner_stat_dynamo(current_obj):
 
         await asyncio.gather(t1, t2, t3)
     print(f'{get_current_datetime()} | request stats success')
-
 
 
 async def request_stats(current_obj, queue_type, season, client):

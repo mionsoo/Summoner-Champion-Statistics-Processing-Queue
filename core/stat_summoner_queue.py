@@ -1,17 +1,12 @@
 import asyncio
 from datetime import datetime
-import time
 import traceback
 
 from common.const import Status
-from common.db import (
-    RDS_INSTANCE_TYPE,
-    connect_sql_aurora_async
-)
-from common.utils import get_changed_current_obj_status, get_current_datetime, logging_time
+from common.utils import get_changed_current_obj_status
 from core.stat_queue_sys import QueueOperator, QueueStatus
 
-from helper.stat_summoner import wait_func, work_func, update_summoner_stat_dynamo
+from helper.stat_summoner import wait_func, work_func
 
 from model.summoner_model import WaitingSummonerObj, WaitingSummonerMatchObj
 
@@ -29,13 +24,10 @@ def wrap_summoner_obj(obj: Tuple[str, str, int, datetime]) -> WaitingSummonerObj
 
 
 class SummonerQueueOperator(QueueOperator):
-    async def update_new_data(self):
-        conn = await connect_sql_aurora_async(RDS_INSTANCE_TYPE.READ)
+    async def update_new_data(self, conn):
         async with conn.cursor() as cursor:
             await self.add_queue(cursor, self.waiting_status)
             await self.add_queue(cursor, self.working_status)
-
-        conn.close()
 
     async def add_queue(self, cursor, status_obj: QueueStatus):
         if status_obj.status_criterion == Status.Waiting.code:
@@ -91,10 +83,10 @@ class SummonerQueueOperator(QueueOperator):
 
         return [await status_obj.pop() for _ in range(pop_count)]
 
-    async def process_job(self, current_obj: WaitingSummonerObj):
+    async def process_job(self, current_obj: WaitingSummonerObj, conn=None, match_ids=None):
         try:
             suitable_func = self.search_suitable_process_func(current_obj)
-            func_return = await suitable_func(current_obj)
+            func_return = await suitable_func(current_obj, conn)
             changed_current_obj_status_code = await get_changed_current_obj_status(current_obj, func_return)
 
         except Exception:
@@ -106,27 +98,17 @@ class SummonerQueueOperator(QueueOperator):
             print(traceback.format_exc())
 
         finally:
-            conn = await connect_sql_aurora_async(RDS_INSTANCE_TYPE.READ)
-            async with conn.cursor() as cursor:
-                await cursor.execute(
-                    'UPDATE b2c_summoner_queue '
+            # if current_obj.status == Status.Working.code and changed_current_obj_status_code == Status.Success.code:
+            #     await update_summoner_stat_dynamo(current_obj)
+            self.update_last_obj(current_obj)
+            self.update_last_change_status(changed_current_obj_status_code)
+
+            return ('UPDATE b2c_summoner_queue '
                     f'SET status = {changed_current_obj_status_code} '
                     f'WHERE platform_id = {repr(current_obj.platform_id)} '
                     f'and puu_id = {repr(current_obj.puu_id)} '
                     f'and status = {current_obj.status} '
-                    f'and reg_datetime = "{str(current_obj.reg_datetime)}"'
-                )
-                await conn.commit()
-            conn.close()
-
-            if current_obj.status == Status.Working.code and changed_current_obj_status_code == Status.Success.code:
-                await update_summoner_stat_dynamo(current_obj)
-
-            # if self.last_obj == current_obj and self.last_change_status_code == changed_current_obj_status_code:
-            #     time.sleep(10)
-
-            self.update_last_obj(current_obj)
-            self.update_last_change_status(changed_current_obj_status_code)
+                    f'and reg_datetime = "{str(current_obj.reg_datetime)}"')
 
     @staticmethod
     def search_suitable_process_func(current_obj: WaitingSummonerObj) -> Callable:
@@ -135,7 +117,7 @@ class SummonerQueueOperator(QueueOperator):
         elif current_obj.status == Status.Working.code:
             return work_func
 
-    def print_remain(self):
+    def print_counts_remain(self, conn=None):
         print(f'\n - Remain\n'
               f'\tWaiting: {self.waiting_status.count} ({round(self.calc_waiting_ratio() * 100, 2)}%)\n'
               f'\tWorking: {self.working_status.count} ({round(self.calc_working_ratio() * 100, 2)}%)')

@@ -1,6 +1,7 @@
 import requests
 import time
 
+
 def get_json(target_url):
     server_error_count = 0
     while True:
@@ -51,7 +52,6 @@ def get_json_time_limit(target_url, time_limit):
         timeout=time_limit
     )
     return result
-
 
 
 class RiotV4:
@@ -225,7 +225,7 @@ class RiotV5Match(RiotV5):
                          f'&api_key={self.__api_key}&start={start_idx}&count={count}'
 
         if start_time and end_time:
-            if type(start_time) == int and type(end_time) == int:
+            if isinstance(type(start_time), int) and isinstance(type(end_time), int):
                 # self.__target_root += f'&startTime={start_time}&endTime={end_time}&start={start_idx}&count={count}'
                 target_url += f'&startTime={start_time}&endTime={end_time}'
             else:
@@ -294,6 +294,7 @@ class RiotV1Challenges(RiotV4):
                      f'{puu_id}?api_key={self.__api_key}'
 
         return target_url
+
 
 class RiotV1Accounts:
     def __init__(self, api_key):

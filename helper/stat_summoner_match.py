@@ -1,33 +1,18 @@
 import json
-import requests
 import aiohttp
 import asyncio
 
 from common.utils import get_current_datetime
-from common.const import Status
 from model.summoner_model import WaitingSummonerMatchObj, WaitingSummonerObj
-from common.db import connect_sql_aurora, sql_execute, RDS_INSTANCE_TYPE, connect_sql_aurora_async
 
 
-async def wait_func(current_obj: WaitingSummonerMatchObj) -> None:
+async def wait_func(current_obj: WaitingSummonerMatchObj, match_ids) -> None:
     await asyncio.sleep(0)
     return None
 
 
-async def work_func(current_obj: WaitingSummonerObj) -> int | None:
+async def work_func(current_obj: WaitingSummonerObj, match_ids) -> int | None:
     print(f'{get_current_datetime()} | ', *current_obj.__dict__.values())
-    conn = await connect_sql_aurora_async(RDS_INSTANCE_TYPE.READ)
-    async with conn.cursor() as cursor:
-        await cursor.execute(
-            'SELECT match_id '
-            'FROM b2c_summoner_match_queue '
-            f'WHERE puu_id = {repr(current_obj.puu_id)} '
-            f'and platform_id = {repr(current_obj.platform_id)} '
-            f'and status = {Status.Working.code}'
-        )
-        result = await cursor.fetchall()
-        match_ids = sum(list(result), ())
-    conn.close()
     print(f'{get_current_datetime()} | Num of requests: {len(match_ids)}')
 
     async with aiohttp.ClientSession() as client:
@@ -57,5 +42,3 @@ async def request_stats_async(current_obj, match_id, client):
         print(z)
         r = await response.json()
         return r['msg']
-
-

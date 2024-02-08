@@ -1,27 +1,32 @@
-import time
 import traceback
 
 import sys
 sys.path.append("/usr/src/app")
 from common.utils import get_current_datetime
 from common.const import Status
+from common.db import connect_sql_aurora_async, RDS_INSTANCE_TYPE, execute_update_queries
 from core.stat_summoner_match_queue import SummonerMatchQueueOperator
-from core.stat_queue_sys import QueueComment
+from core.stat_queue_sys import QueueEmptyComment
 import asyncio
 
 
 async def main():
-    queue_comment = QueueComment()
+    queue_comment = QueueEmptyComment()
     queue_op = SummonerMatchQueueOperator()
+    conn = await connect_sql_aurora_async(RDS_INSTANCE_TYPE.READ)
 
     while True:
         try:
-            await queue_op.update_new_data()
+            await queue_op.update_new_data(conn)
 
-            if queue_op.is_all_queue_is_empty() and queue_comment.is_need_to_print_empty():
+            if queue_op.is_all_queue_is_empty() and queue_comment.is_set_print():
                 print(f'{get_current_datetime()} | Queue is Empty')
                 print('------------------------------\n')
-                queue_comment.empty_printed()
+                queue_comment.set_printed()
+                await asyncio.sleep(20)
+
+            elif queue_op.is_all_queue_is_empty():
+                print('sleep')
                 await asyncio.sleep(20)
 
             elif queue_op.is_data_exists():
@@ -29,12 +34,27 @@ async def main():
                 if None in current_objs:
                     pass
                 else:
-                    tasks = [asyncio.create_task(queue_op.process_job(current_obj)) for current_obj in current_objs]
-                    await asyncio.gather(*tasks)
-                    await queue_op.print_remain()
+                    tasks = []
+                    for idx, current_obj in enumerate(current_objs):
+                        async with conn.cursor() as cursor:
+                            await cursor.execute(
+                                'SELECT match_id '
+                                'FROM b2c_summoner_match_queue '
+                                f'WHERE puu_id = {repr(current_obj.puu_id)} '
+                                f'and platform_id = {repr(current_obj.platform_id)} '
+                                f'and status = {Status.Working.code}'
+                            )
+                            result = await cursor.fetchall()
+                            match_ids = sum(list(result), ())
+
+                        tasks.append(asyncio.create_task(queue_op.process_job(current_obj, match_ids=match_ids)))
+
+                    queries = await asyncio.gather(*tasks)
+                    await execute_update_queries(conn, queries)
+                    await queue_op.print_counts_remain(conn)
                     print('------------------------------\n')
 
-                queue_comment.print_empty()
+                queue_comment.set_print()
 
         except Exception:
             print(traceback.format_exc())
@@ -45,6 +65,4 @@ if __name__ == '__main__':
         asyncio.run(main())
     except Exception as e:
         print(e)
-
-
 

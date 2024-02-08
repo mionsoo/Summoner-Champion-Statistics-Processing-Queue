@@ -35,7 +35,6 @@ class RDS_INSTANCE_TYPE:
     PLAIN = 'PLAIN'
 
 
-
 @dataclass
 class Config:
     """
@@ -72,6 +71,7 @@ def conf():
     config = dict(prod=ProdConfig, dev=ProdConfig)
     return config[environ.get("API_ENV", "prod")]()
 
+
 conf_dict = asdict(conf())
 
 
@@ -87,10 +87,10 @@ def get_rds_instance_host(instance_type: RDS_INSTANCE_TYPE):
 
 
 def connect_sql_aurora(instance_type: RDS_INSTANCE_TYPE):
-    '''
+    """
     메인 db 커서
     :return:
-    '''
+    """
     host_url = get_rds_instance_host(instance_type)
 
     conn = pymysql.connect(
@@ -101,11 +101,11 @@ def connect_sql_aurora(instance_type: RDS_INSTANCE_TYPE):
 
 
 def sql_execute(query, conn):
-    '''
+    """
         SQL 작업 처리하여 리턴 값 반환
         query : 작업 쿼리
         conn : mysql connect 변수
-    '''
+    """
     cursor = conn.cursor()
     cursor.execute(query)
     result = cursor.fetchall()
@@ -113,11 +113,11 @@ def sql_execute(query, conn):
 
 
 def sql_execute_dict(query, conn):
-    '''
+    """
         SQL 작업 처리하여 리턴 값 반환
         query : 작업 쿼리
         conn : mysql connect 변수
-    '''
+    """
     cursor = conn.cursor(cursor=pymysql.cursors.DictCursor)
     cursor.execute(query)
     result = cursor.fetchall()
@@ -131,5 +131,24 @@ async def connect_sql_aurora_async(instance_type):
         user='dbmasteruser',
         password=db_pass,
         db=conf_dict.get('AURORA_DB'),
+        charset='utf8mb4',
+        autocommit=True
+    )
+
+
+async def connect_pool_sql_aurora_async(instance_type):
+    host_url = get_rds_instance_host(instance_type)
+    return await aiomysql.create_pool(
+        host=host_url,
+        user='dbmasteruser',
+        password=db_pass,
+        db=conf_dict.get('AURORA_DB'),
         charset='utf8mb4'
     )
+
+
+async def execute_update_queries(conn, queries):
+    async with conn.cursor() as cursor:
+        for query in queries:
+            await cursor.execute(query)
+    await conn.commit()

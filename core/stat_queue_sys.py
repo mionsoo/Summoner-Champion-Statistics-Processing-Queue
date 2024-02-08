@@ -9,17 +9,17 @@ from typing import Deque, List
 from common.const import Status
 
 
-class QueueComment:
+class QueueEmptyComment:
     def __init__(self):
         self.flag = True
 
-    def empty_printed(self):
+    def set_printed(self):
         self.flag = False
 
-    def print_empty(self):
+    def set_print(self):
         self.flag = True
 
-    def is_need_to_print_empty(self):
+    def is_set_print(self):
         return self.flag
 
 
@@ -115,11 +115,11 @@ class QueueOperator(metaclass=ABCMeta):
         return self.working_status.count != 0 or self.waiting_status.count != 0
 
     @abstractmethod
-    def update_new_data(self):
+    def update_new_data(self, conn):
         pass
 
     @abstractmethod
-    def process_job(self, current_obj: WaitingSummonerObj | WaitingSummonerMatchObj):
+    def process_job(self, current_obj: WaitingSummonerObj | WaitingSummonerMatchObj, conn=None, match_ids=None):
         pass
 
     @staticmethod
@@ -128,5 +128,5 @@ class QueueOperator(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def print_remain(self):
+    def print_counts_remain(self, conn=None):
         pass

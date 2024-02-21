@@ -24,7 +24,7 @@ async def work_func(current_obj: WaitingSummonerObj, match_ids):
         pass
     finally:
         try:
-            q =  [(x.split(', ')[0], current_obj.puu_id, current_obj.platform_id, str(current_obj.reg_date), Status.Success.code if x.split(', ')[1] != 'insert success' else Status.Error.code) for x in results if x.split(', ')]
+            q = [(x.split(', ')[0], current_obj.puu_id, current_obj.platform_id, str(current_obj.reg_date), Status.Success.code if x.split(', ')[1] == 'insert success' else Status.Error.code) for x in results if x.split(', ')]
         except:
             print(f'results: {results} ')
 

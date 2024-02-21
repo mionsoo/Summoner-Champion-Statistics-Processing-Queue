@@ -4,7 +4,7 @@ import sys
 sys.path.append("/usr/src/app")
 from common.utils import get_current_datetime
 from common.const import Status
-from common.db import connect_sql_aurora_async, RDS_INSTANCE_TYPE, execute_update_queries
+from common.db import connect_sql_aurora_async, RDS_INSTANCE_TYPE, execute_update_queries_match
 from core.stat_summoner_match_queue import SummonerMatchQueueOperator
 from core.stat_queue_sys import QueueEmptyComment
 import asyncio
@@ -42,7 +42,8 @@ async def main():
                                 'FROM b2c_summoner_match_queue '
                                 f'WHERE puu_id = {repr(current_obj.puu_id)} '
                                 f'and platform_id = {repr(current_obj.platform_id)} '
-                                f'and status = {Status.Working.code}'
+                                f'and status = {Status.Working.code} '
+                                f'and reg_date = "{str(current_obj.reg_date)}"'
                             )
                             result = await cursor.fetchall()
                             match_ids = sum(list(result), ())
@@ -50,7 +51,7 @@ async def main():
                         tasks.append(asyncio.create_task(queue_op.process_job(current_obj, match_ids=match_ids)))
 
                     queries = await asyncio.gather(*tasks)
-                    await execute_update_queries(conn, queries)
+                    await execute_update_queries_match(conn, queries)
                     await queue_op.print_counts_remain(conn)
                     print('------------------------------\n')
 

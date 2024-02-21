@@ -4,6 +4,7 @@ import asyncio
 
 from common.utils import get_current_datetime
 from model.summoner_model import WaitingSummonerMatchObj, WaitingSummonerObj
+from common.const import Status
 
 
 async def wait_func(current_obj: WaitingSummonerMatchObj, match_ids) -> None:
@@ -11,18 +12,23 @@ async def wait_func(current_obj: WaitingSummonerMatchObj, match_ids) -> None:
     return None
 
 
-async def work_func(current_obj: WaitingSummonerObj, match_ids) -> int | None:
+async def work_func(current_obj: WaitingSummonerObj, match_ids):
     print(f'{get_current_datetime()} | ', *current_obj.__dict__.values())
     print(f'{get_current_datetime()} | Num of requests: {len(match_ids)}')
 
-    async with aiohttp.ClientSession() as client:
-        tasks = [asyncio.create_task(request_stats_async(current_obj, match_id, client)) for match_id in match_ids]
-        results = await asyncio.gather(*tasks)
+    try:
+        async with aiohttp.ClientSession() as client:
+            tasks = [asyncio.create_task(request_stats_async(current_obj, match_id, client)) for match_id in match_ids]
+            results = await asyncio.gather(*tasks)
+    except:
+        pass
+    finally:
+        q =  [(x.split(', ')[0], current_obj.puu_id, current_obj.platform_id, str(current_obj.reg_date), Status.Error.code if x.split(', ')[1] == 'error' else Status.Success.code) async for x in results if x.split(', ')]
 
-    if sum(map(lambda x: x.split(', ')[-1] == 'insert success', results)) == len(match_ids):
-        return None
+    # if sum(map(lambda x: x.split(', ')[-1] == 'insert success', results)) == len(match_ids):
+    #     return None
 
-    return None
+    return q, None
 
 
 async def request_stats_async(current_obj, match_id, client):
@@ -37,8 +43,12 @@ async def request_stats_async(current_obj, match_id, client):
         'Content-Type': 'application/json'
     }
     url = 'https://renew.deeplol.gg/match/stats-async'
-    async with client.post(url, data=json.dumps(req_data), headers=req_headers) as response:
-        z = await response.text()
-        print(z)
-        r = await response.json()
-        return r['msg']
+    try:
+        async with client.post(url, data=json.dumps(req_data), headers=req_headers) as response:
+            z = await response.text()
+            print(z)
+            r = await response.json()
+            return r['msg']
+    except:
+        print(f'{match_id}, error')
+        return f'{match_id}, error'

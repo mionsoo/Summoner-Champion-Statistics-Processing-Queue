@@ -1,3 +1,4 @@
+import asyncio
 import traceback
 
 from common.const import Status
@@ -11,11 +12,12 @@ from typing import Tuple, List
 
 
 def wrap_summoner_obj(obj: Tuple[str, str]) -> WaitingSummonerObj:
-    platform_id, puu_id, *_ = obj
+    platform_id, puu_id, reg_date, *_ = obj
     return WaitingSummonerObj(
         platform_id=platform_id,
         puu_id=puu_id,
-        status=Status.Working.code
+        status=Status.Working.code,
+        reg_date=reg_date
     )
 
 
@@ -44,7 +46,7 @@ class SummonerMatchQueueOperator(QueueOperator):
             _status_obj = self.working_status
 
         await cursor.execute(
-            'SELECT distinct platform_id, puu_id '
+            'SELECT distinct platform_id, puu_id, reg_date '
             'FROM b2c_summoner_match_queue '
             f'WHERE status={status} '
             f'ORDER BY reg_datetime ASC '
@@ -81,7 +83,7 @@ class SummonerMatchQueueOperator(QueueOperator):
     async def process_job(self, current_obj: WaitingSummonerMatchObj, conn=None, match_ids=list):
         try:
             suitable_func = self.search_suitable_process_func(current_obj)
-            func_return = await suitable_func(current_obj, match_ids)
+            queries, func_return = await suitable_func(current_obj, match_ids)
             changed_current_obj_status_code = await get_changed_current_obj_status(current_obj, func_return)
 
         except Exception:
@@ -97,17 +99,19 @@ class SummonerMatchQueueOperator(QueueOperator):
         finally:
             self.update_last_obj(current_obj)
             self.update_last_change_status(changed_current_obj_status_code)
-            return self.update_processed_match_status(changed_current_obj_status_code, current_obj)
+            # return self.update_processed_match_status(changed_current_obj_status_code, current_obj)
+            return queries
 
     @staticmethod
     def update_processed_match_status(changed_current_obj_status_code, current_obj):
-        return (
-            'UPDATE b2c_summoner_match_queue '
-            f'SET status = {changed_current_obj_status_code} '
-            f'WHERE platform_id = {repr(current_obj.platform_id)} '
-            f'and puu_id = {repr(current_obj.puu_id)} '
-            f'and status = {current_obj.status} '
-        )
+        return f'platform_id={repr(current_obj)}'
+        # return (
+        #     'UPDATE b2c_summoner_match_queue '
+        #     f'SET status = {changed_current_obj_status_code} '
+        #     f'WHERE platform_id = {repr(current_obj.platform_id)} '
+        #     f'and puu_id = {repr(current_obj.puu_id)} '
+        #     f'and status = {current_obj.status} '
+        # )
 
     @staticmethod
     def search_suitable_process_func(current_obj: WaitingSummonerMatchObj):

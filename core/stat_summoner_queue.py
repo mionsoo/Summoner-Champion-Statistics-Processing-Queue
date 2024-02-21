@@ -103,12 +103,13 @@ class SummonerQueueOperator(QueueOperator):
             self.update_last_obj(current_obj)
             self.update_last_change_status(changed_current_obj_status_code)
 
-            return ('UPDATE b2c_summoner_queue '
-                    f'SET status = {changed_current_obj_status_code} '
-                    f'WHERE platform_id = {repr(current_obj.platform_id)} '
-                    f'and puu_id = {repr(current_obj.puu_id)} '
-                    f'and status = {current_obj.status} '
-                    f'and reg_datetime = "{str(current_obj.reg_datetime)}"')
+            # return ('UPDATE b2c_summoner_queue '
+            #         f'SET status = {changed_current_obj_status_code} '
+            #         f'WHERE platform_id = {repr(current_obj.platform_id)} '
+            #         f'and puu_id = {repr(current_obj.puu_id)} '
+            #         f'and status = {current_obj.status} '
+            #         f'and reg_datetime = "{str(current_obj.reg_datetime)}"')
+            return f'({repr(current_obj.puu_id)}, {repr(current_obj.platform_id)}, {current_obj.status}, {repr(str(current_obj.reg_datetime))})'
 
     @staticmethod
     def search_suitable_process_func(current_obj: WaitingSummonerObj) -> Callable:

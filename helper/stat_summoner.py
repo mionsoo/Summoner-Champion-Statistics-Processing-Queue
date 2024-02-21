@@ -34,8 +34,8 @@ async def wait_func(current_obj: WaitingSummonerObj, conn=None) -> int | None:
 
 
 async def work_func(current_obj, conn) -> int | None:
-    _conn = await connect_sql_aurora_async(RDS_INSTANCE_TYPE.READ)
-    async with _conn.cursor() as cursor:
+    # _conn = await connect_sql_aurora_async(RDS_INSTANCE_TYPE.READ)
+    async with conn.cursor() as cursor:
         await cursor.execute(
             'SELECT match_id, status '
             'FROM b2c_summoner_match_queue '
@@ -46,7 +46,7 @@ async def work_func(current_obj, conn) -> int | None:
         )
 
     not_finished_jobs = await cursor.fetchall()
-    _conn.close()
+
 
     if len(not_finished_jobs) >= 1:
         return 1

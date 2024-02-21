@@ -4,7 +4,7 @@ import traceback
 import sys
 sys.path.append("/usr/src/app")
 
-from common.db import connect_sql_aurora_async, execute_update_queries, RDS_INSTANCE_TYPE
+from common.db import connect_sql_aurora_async, execute_update_queries_summoner, RDS_INSTANCE_TYPE
 from common.utils import get_current_datetime
 from core.stat_summoner_queue import SummonerQueueOperator
 from core.stat_queue_sys import QueueEmptyComment
@@ -58,7 +58,7 @@ async def queue_system():
                 if current_objs is not None:
                     tasks = [asyncio.create_task(queue_op.process_job(current_obj, conn)) for current_obj in current_objs]
                     queries = await asyncio.gather(*tasks)
-                    await execute_update_queries(conn, queries)
+                    await execute_update_queries_summoner(conn, queries)
 
                     queue_op.print_counts_remain()
                     print('------------------------------\n')

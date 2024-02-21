@@ -162,10 +162,10 @@ async def execute_update_queries_match(conn, queries):
 async def execute_update_queries_summoner(conn, queries):
     async with conn.cursor() as cursor:
         await cursor.execute(
-            'INSERT INTO b2c_summoner_queue(puu_id, platform_id, status, reg_datetime) '
+            'INSERT INTO b2c_summoner_queue(puu_id, platform_id, status, reg_date, reg_datetime) '
             f'VALUES{", ".join(queries)} as queue '
             f'ON DUPLICATE KEY UPDATE status=queue.status'
         )
         # for query in queries:
         #     await cursor.execute(query)
-    await conn.commit()
+        await conn.commit()

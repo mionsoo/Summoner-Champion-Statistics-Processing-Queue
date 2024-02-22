@@ -43,7 +43,6 @@ async def main():
                                 f'WHERE puu_id = {repr(current_obj.puu_id)} '
                                 f'and platform_id = {repr(current_obj.platform_id)} '
                                 f'and status = {Status.Working.code} '
-                                f'and reg_date = "{str(current_obj.reg_date)}"'
                             )
                             result = await cursor.fetchall()
                             match_ids = sum(list(result), ())

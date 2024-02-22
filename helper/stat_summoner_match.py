@@ -12,6 +12,21 @@ async def wait_func(current_obj: WaitingSummonerMatchObj, match_ids) -> None:
     return None
 
 
+async def make_queries(current_obj, results):
+    await asyncio.sleep(0)
+    # q = [(x.split(', ')[0], current_obj.puu_id, current_obj.platform_id, str(current_obj.reg_date),
+    #       Status.Success.code if x.split(', ')[1] == 'insert success' else Status.Error.code) async for x in results]
+
+    q = []
+    for x in results:
+        match_id = x.split(', ')[0]
+        puu_id = current_obj.puu_id
+        platform_id = current_obj.platform_id
+        # reg_date = str(current_obj.reg_date)
+        status = Status.Error.code if x.endswith('서버측 에러로 매치 업데이트에 실패했습니다.') or x.split(', ')[1] == 'error' else Status.Success.code
+        q.append((match_id, puu_id, platform_id, status))
+    return q
+
 async def work_func(current_obj: WaitingSummonerObj, match_ids):
     print(f'{get_current_datetime()} | ', *current_obj.__dict__.values())
     print(f'{get_current_datetime()} | Num of requests: {len(match_ids)}')
@@ -24,8 +39,7 @@ async def work_func(current_obj: WaitingSummonerObj, match_ids):
         pass
     finally:
         try:
-            q = [(x.split(', ')[0], current_obj.puu_id, current_obj.platform_id, str(current_obj.reg_date), Status.Success.code if x.split(', ')[1] == 'insert success' else Status.Error.code) for x in results if x.split(', ')]
-
+            q = await make_queries(current_obj, results)
         except:
             print(f'results: {results} ')
 

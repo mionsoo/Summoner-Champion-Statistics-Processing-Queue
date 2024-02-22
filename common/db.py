@@ -150,7 +150,7 @@ async def connect_pool_sql_aurora_async(instance_type):
 async def execute_update_queries_match(conn, queries):
     async with conn.cursor() as cursor:
         await cursor.execute(
-            'INSERT INTO b2c_summoner_match_queue(match_id, puu_id, platform_id, reg_date, status) '
+            'INSERT INTO b2c_summoner_match_queue(match_id, puu_id, platform_id, status) '
             f'VALUES{", ".join(map(repr, sum(queries, [])))} as queue '
             f'ON DUPLICATE KEY UPDATE status=queue.status'
         )

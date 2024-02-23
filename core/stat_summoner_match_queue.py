@@ -49,7 +49,7 @@ class SummonerMatchQueueOperator(QueueOperator):
             'SELECT distinct platform_id, puu_id, reg_date '
             'FROM b2c_summoner_match_queue '
             f'WHERE status={status} '
-            f'ORDER BY reg_datetime ASC '
+            # f'ORDER BY reg_datetime ASC '
         )
         result = await cursor.fetchall()
         new_objs = {tuple(wrap_summoner_obj(x).__dict__.values()) for x in result}

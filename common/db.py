@@ -156,7 +156,7 @@ async def execute_update_queries_match(conn, queries):
         )
         # for query in queries:
         #     await cursor.execute(query)
-    await conn.commit()
+        await conn.commit()
 
 
 async def execute_update_queries_summoner(conn, queries):

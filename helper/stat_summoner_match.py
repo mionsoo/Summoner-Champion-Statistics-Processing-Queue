@@ -19,12 +19,19 @@ async def make_queries(current_obj, results):
 
     q = []
     for x in results:
-        match_id = x.split(', ')[0]
+        match_id, result_msg = x.split(', ')
         puu_id = current_obj.puu_id
         platform_id = current_obj.platform_id
-        # reg_date = str(current_obj.reg_date)
-        status = Status.Error.code if x.endswith('서버측 에러로 매치 업데이트에 실패했습니다.') or x.split(', ')[1] == 'error' else Status.Success.code
+        status = Status.Success.code
+        if (
+                result_msg == 'error'
+                or x.endswith('해당 (유저의) 경기가 존재하지 않습니다.')
+                or x.endswith('서버측 에러로 매치 업데이트에 실패했습니다.')
+        ):
+            status = Status.Error.code
+
         q.append((match_id, puu_id, platform_id, status))
+
     return q
 
 async def work_func(current_obj: WaitingSummonerObj, match_ids):

@@ -14,8 +14,6 @@ async def wait_func(current_obj: WaitingSummonerMatchObj, match_ids) -> None:
 
 async def make_queries(current_obj, results):
     await asyncio.sleep(0)
-    # q = [(x.split(', ')[0], current_obj.puu_id, current_obj.platform_id, str(current_obj.reg_date),
-    #       Status.Success.code if x.split(', ')[1] == 'insert success' else Status.Error.code) async for x in results]
 
     q = []
     for x in results:
@@ -33,6 +31,7 @@ async def make_queries(current_obj, results):
         q.append((match_id, puu_id, platform_id, status))
 
     return q
+
 
 async def work_func(current_obj: WaitingSummonerObj, match_ids):
     print(f'{get_current_datetime()} | ', *current_obj.__dict__.values())

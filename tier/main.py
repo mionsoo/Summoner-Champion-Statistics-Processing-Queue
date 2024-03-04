@@ -305,6 +305,10 @@ def queue_system():
                 print(f'{get_current_datetime()} | Queue is Empty')
                 print('------------------------------\n')
                 is_queue_is_empty_string_not_printed = False
+                time.sleep(20)
+
+            elif rd.llen('error_list') == 0:
+                time.sleep(20)
 
             # 대기열 인원 체크
             elif rd.llen('error_list') >= 1:

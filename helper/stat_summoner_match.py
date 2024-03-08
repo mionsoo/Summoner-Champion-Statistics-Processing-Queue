@@ -69,9 +69,10 @@ async def request_stats_async(current_obj, match_id, client):
     url = 'https://renew.deeplol.gg/match/stats-async'
     try:
         async with client.post(url, data=json.dumps(req_data), headers=req_headers) as response:
-            z = await response.text()
-            print(z)
-            r = await response.json()
+            data = await response.read()
+
+            print(data)
+            r = json.loads(data)
             return r['msg']
     except:
         print(f'{match_id}, error')

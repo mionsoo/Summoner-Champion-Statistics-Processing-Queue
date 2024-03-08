@@ -19,7 +19,8 @@ async def request_stats_async(current_obj, client):
         f'&puu_id={current_obj.puu_id}'
     )
     async with client.get(url, headers=req_headers) as response:
-        r = await response.json()
+        data = await response.read()
+        r = json.loads(data)
         return r
 
 
@@ -68,7 +69,8 @@ async def get_season(client):
     }
     url = 'https://renew.deeplol.gg/common/season-list'
     async with client.get(url, headers=req_headers) as response:
-        r = await response.json()
+        data = await response.read()
+        r = json.loads(data)
         return r['season_list'][0]
 
 
@@ -101,7 +103,9 @@ async def request_stats(current_obj, queue_type, season, client):
     }
     url = 'https://renew.deeplol.gg/match/stats'
     async with client.post(url, data=json.dumps(req_data), headers=req_headers) as response:
-        r = await response.json()
+        data = await response.read()
+        r = json.loads(data)
+
         if r['msg'] != 'insert success':
             print('stats: ', r)
         return r['msg']
@@ -117,5 +121,6 @@ async def request_stats_async_work(current_obj, client):
         f'&puu_id={current_obj.puu_id}'
     )
     async with client.get(url, headers=req_headers) as response:
-        r = await response.json()
+        data = await response.read()
+        r = json.loads(data)
         return r

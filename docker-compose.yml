@@ -1,15 +1,15 @@
 version: '3'
 
 services:
-  tier_queue:
-    build: .
-    restart: on-failure
-    command: python3 -u tier/main.py
-    environment:
-      API_ENV: ${API_ENV}
-      AWS_ACCESS: ${AWS_ACCESS}
-      AWS_SECRET: ${AWS_SECRET}
-      HOST: ${HOST}
+#  tier_queue:
+#    build: .
+#    restart: on-failure
+#    command: python3 -u tier/main.py
+#    environment:
+#      API_ENV: ${API_ENV}
+#      AWS_ACCESS: ${AWS_ACCESS}
+#      AWS_SECRET: ${AWS_SECRET}
+#      HOST: ${HOST}
 
   stat_summoner_queue:
     build: .

@@ -36,8 +36,8 @@ async def main():
                     pass
                 else:
                     tasks = []
-                    for idx, current_obj in enumerate(current_objs):
-                        async with conn.cursor() as cursor:
+                    async with conn.cursor() as cursor:
+                        for idx, current_obj in enumerate(current_objs):
                             await cursor.execute(
                                 'SELECT match_id '
                                 'FROM b2c_summoner_match_queue '

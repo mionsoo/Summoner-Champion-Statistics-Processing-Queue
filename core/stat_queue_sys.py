@@ -1,6 +1,5 @@
 import asyncio
 
-from core.db_connection import DBConn
 from model.summoner_model import WaitingSummonerObj, WaitingSummonerMatchObj
 from abc import *
 
@@ -69,7 +68,6 @@ class QueueStatus:
 
 class QueueOperator(metaclass=ABCMeta):
     def __init__(self):
-        self.dbconn = DBConn()
         self.waiting_status = QueueStatus(criterion=Status.Waiting.code)
         self.working_status = QueueStatus(criterion=Status.Working.code)
         self.last_obj = None

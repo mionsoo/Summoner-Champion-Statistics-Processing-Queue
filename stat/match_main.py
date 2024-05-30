@@ -1,10 +1,11 @@
 import traceback
+from itertools import chain
 
 import sys
 sys.path.append("/usr/src/app")
 from common.utils import get_current_datetime
 from common.const import Status
-from common.db import connect_sql_aurora_async, RDS_INSTANCE_TYPE, execute_update_queries_match
+from common.db import connect_sql_aurora_async, RDS_INSTANCE_TYPE, execute_update_queries_match, update_current_obj_status
 from core.stat_summoner_match_queue import SummonerMatchQueueOperator
 from core.stat_queue_sys import QueueEmptyComment
 import asyncio
@@ -50,7 +51,13 @@ async def main():
                         tasks.append(asyncio.create_task(queue_op.process_job(current_obj, match_ids=match_ids)))
 
                     queries = await asyncio.gather(*tasks)
-                    await execute_update_queries_match(conn, queries)
+
+
+                    t_queries = sum(chain.from_iterable(queries), [])
+
+
+                    match_id_lists, error_match_id_lists = await execute_update_queries_match(conn, t_queries)
+                    await update_current_obj_status(conn, match_id_lists, error_match_id_lists)
                     await queue_op.print_counts_remain(conn)
                     print('------------------------------\n')
 

@@ -25,7 +25,7 @@ async def get_changed_current_obj_status(current_obj, func_return) -> int:
     elif current_obj.status == Status.Working.code:
         changed_status = Status.Working.code
         comment = f'is still processing\n"{current_obj}"'
-        await asyncio.sleep(30)
+        await asyncio.sleep(5)
 
     else:
         changed_status = Status.Waiting.code

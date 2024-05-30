@@ -4,6 +4,7 @@ import asyncio
 
 from common.utils import get_current_datetime
 from model.summoner_model import WaitingSummonerMatchObj, WaitingSummonerObj
+from model.match_model import BatchStatQueueContainer
 from common.const import Status
 
 
@@ -43,37 +44,36 @@ async def work_func(current_obj: WaitingSummonerObj, match_ids):
             results = await asyncio.gather(*tasks)
     except:
         pass
-    finally:
-        try:
-            q = await make_queries(current_obj, results)
-        except:
-            print(f'results: {results} ')
+
 
     # if sum(map(lambda x: x.split(', ')[-1] == 'insert success', results)) == len(match_ids):
     #     return None
 
-    return q, None
+
+    return results, None
 
 
 async def request_stats_async(current_obj, match_id, client):
+    # req_data = {
+    #     "platform_id": current_obj.platform_id,
+    #     "puu_id": current_obj.puu_id,
+    #     "match_id": match_id,
+    #     'batch': 1
+    # }
     req_data = {
-        "platform_id": current_obj.platform_id,
-        "puu_id": current_obj.puu_id,
-        "match_id": match_id,
-        'batch': 1
-    }
+            "platform_id": current_obj.platform_id,
+            "match_id": match_id,
+        }
     req_headers = {
         "Referer": 'deeplol.gg',
         'Content-Type': 'application/json'
     }
-    url = 'https://renew.deeplol.gg/match/stats-async'
+    url = f'https://renew.deeplol.gg/batch/stat-async?platform_id={current_obj.platform_id}&match_id={match_id}'
     try:
-        async with client.post(url, data=json.dumps(req_data), headers=req_headers) as response:
+        async with client.get(url, data=json.dumps(req_data), headers=req_headers) as response:
             data = await response.read()
-
-            print(data)
             r = json.loads(data)
-            return r['msg']
-    except:
-        print(f'{match_id}, error')
-        return f'{match_id}, error'
+        return [BatchStatQueueContainer(**i)for i in r['msg'].values()]
+    except Exception as e:
+        print(f'{current_obj.platform_id} {match_id}, error: {data.decode("utf-8")}')
+        return [f'{match_id}, error']

@@ -6,6 +6,10 @@ import pymysql
 
 import aiomysql
 from dataclasses import asdict
+from model.match_model import BatchStatQueueContainer
+from typing import List
+from common.const import Status
+import asyncio
 
 
 aws_access = os.environ.get("AWS_ACCESS", None)
@@ -112,17 +116,6 @@ def sql_execute(query, conn):
     return result
 
 
-def sql_execute_dict(query, conn):
-    """
-        SQL 작업 처리하여 리턴 값 반환
-        query : 작업 쿼리
-        conn : mysql connect 변수
-    """
-    cursor = conn.cursor(cursor=pymysql.cursors.DictCursor)
-    cursor.execute(query)
-    result = cursor.fetchall()
-    return result
-
 
 async def connect_sql_aurora_async(instance_type):
     host_url = get_rds_instance_host(instance_type)
@@ -136,36 +129,113 @@ async def connect_sql_aurora_async(instance_type):
     )
 
 
-async def connect_pool_sql_aurora_async(instance_type):
-    host_url = get_rds_instance_host(instance_type)
-    return await aiomysql.create_pool(
-        host=host_url,
-        user='dbmasteruser',
-        password=db_pass,
-        db=conf_dict.get('AURORA_DB'),
-        charset='utf8mb4'
-    )
+def check_types(value):
+    if isinstance(value, str):
+        return repr(value)
+    else:
+        return value
+
+def make_insert_queries(query: BatchStatQueueContainer):
+    return f'{tuple(query.__dict__.values())}'
+
+def make_insert_duplicate_keys(table_alias):
+    return ','.join([f' {i}={table_alias}.{i}' for i in BatchStatQueueContainer.__dict__['__fields__'].keys()])
 
 
-async def execute_update_queries_match(conn, queries):
+async def update_current_obj_status(conn, match_id_lists, error_match_id_lists):
     async with conn.cursor() as cursor:
-        await cursor.execute(
-            'INSERT INTO b2c_summoner_match_queue(match_id, puu_id, platform_id, status) '
-            f'VALUES{", ".join(map(repr, sum(queries, [])))} as queue '
-            f'ON DUPLICATE KEY UPDATE status=queue.status'
-        )
-        # for query in queries:
-        #     await cursor.execute(query)
+        query = (f'UPDATE b2c_summoner_match_queue '
+                 f'set status={Status.Success.code} '
+                 f'where match_id=%s')
+        await cursor.executemany(query, match_id_lists)
+        await conn.commit()
+
+        query = (f'UPDATE b2c_summoner_match_queue '
+                 f'set status={Status.Error.code} '
+                 f'where match_id=%s')
+        await cursor.executemany(query, error_match_id_lists)
         await conn.commit()
 
 
-async def execute_update_queries_summoner(conn, queries):
+async def execute_update_queries_match(conn, t_queries: List[BatchStatQueueContainer|str]):
+    match_id_lists, error_match_id_lists = zip(*[[None, query.split(', ')[0]] if 'error' in query else [query.match_id, None] for query in t_queries ])
+    error_match_id_lists = list(filter(lambda item: item is not None, error_match_id_lists))
+    match_id_lists = list(filter(lambda item: item is not None, match_id_lists))
     async with conn.cursor() as cursor:
+        value_query = ','.join([make_insert_queries(query) for query in t_queries if 'error' not in query])
+        if value_query:
+            table_alias = 'stats_p'
+            duplicate_key_update_query= make_insert_duplicate_keys(table_alias)
+            await cursor.execute(
+                query=(
+                    f'INSERT INTO b2c_summoner_champion_stats_partitioned(puu_id, match_id, platform_id, season, creation_timestamp ,queue_id, position, champion_id,'
+                    f'enemy_champion_id, is_win,is_remake ,is_runaway ,kills, deaths, assists, damage_taken, damage_dealt, cs, gold_diff_15, gold_per_team,'
+                    f'damage_per_team, game_duration, gold, kill_point, vision_score, penta_kills, quadra_kills, triple_kills, '
+                    f'double_kills,top, jungle, middle, bot, supporter,cs_15) '
+                    f'values {value_query} as {table_alias} '
+                    f'ON DUPLICATE KEY UPDATE'
+                    f'{duplicate_key_update_query}'
+                )
+            )
+            # for query in queries:
+            #     await cursor.execute(query)
+            await conn.commit()
+    return match_id_lists, error_match_id_lists
+
+def make_bulk_insert_query_values_summoner_match_queue(current_obj, match_id) -> str:
+    return f'({repr(current_obj.platform_id)}, {repr(current_obj.puu_id)}, {repr(match_id)}, {Status.Working.code})'
+
+def make_summoner_insert_query(current_obj, changed_current_obj_status_code):
+    return f'({repr(current_obj.puu_id)}, {repr(current_obj.platform_id)}, {changed_current_obj_status_code}, {repr(str(current_obj.reg_date))}, {repr(str(current_obj.reg_datetime))})'
+
+async def execute_update_queries_summoner(conn, data):
+    match_ids, current_obj, changed_current_obj_status_code = data
+    async with conn.cursor() as cursor:
+        if match_ids != -1 and match_ids is not None:
+            try:
+                await cursor.execute(
+                    'SELECT match_id '
+                    'FROM b2c_summoner_champion_stats_partitioned '
+                    f'WHERE puu_id = {repr(current_obj.puu_id)} '
+                    f'and platform_id = {repr(current_obj.platform_id)} '
+                    f'and season = {current_obj.season} '
+                    f'and queue_id in (420, 440, 450, 900, 1900)'
+                )
+                db_called_match_ids = await cursor.fetchall()
+                db_called_match_ids = set(sum(db_called_match_ids, ()))
+                remove_duplicated_match_ids = match_ids.difference(db_called_match_ids)
+
+                bulk_item = ', '.join(
+                    [make_bulk_insert_query_values_summoner_match_queue(current_obj, match_id) for match_id in remove_duplicated_match_ids])
+            except:
+                print(1)
+            if current_obj.status == Status.Waiting.code  and bulk_item:
+                try:
+                    await cursor.execute(
+                        'INSERT ignore INTO b2c_summoner_match_queue '
+                        '(platform_id, puu_id, match_id, status) '
+                        f'VALUES {bulk_item}'
+                    )
+                    await conn.commit()
+                except aiomysql.IntegrityError:
+                    pass
+                except pymysql.err.OperationalError:
+                    await asyncio.sleep(3)
+                    await cursor.execute(
+                        'INSERT ignore INTO b2c_summoner_match_queue '
+                        '(platform_id, puu_id, match_id, status) '
+                        f'VALUES {bulk_item}'
+                    )
+                    await conn.commit()
+
+        queries = make_summoner_insert_query(current_obj, changed_current_obj_status_code)
         await cursor.execute(
             'INSERT INTO b2c_summoner_queue(puu_id, platform_id, status, reg_date, reg_datetime) '
-            f'VALUES{", ".join(queries)} as queue '
+            f'VALUES{queries} as queue '
             f'ON DUPLICATE KEY UPDATE status=queue.status'
         )
         # for query in queries:
         #     await cursor.execute(query)
         await conn.commit()
+
+        return 0

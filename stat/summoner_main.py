@@ -10,6 +10,7 @@ from core.stat_summoner_queue import SummonerQueueOperator
 from core.stat_queue_sys import QueueEmptyComment
 
 
+
 async def queue_system():
     """
     TODO:
@@ -57,8 +58,10 @@ async def queue_system():
                 current_objs = await queue_op.get_current_obj(3)
                 if current_objs is not None:
                     tasks = [asyncio.create_task(queue_op.process_job(current_obj, conn)) for current_obj in current_objs]
-                    queries = await asyncio.gather(*tasks)
-                    await execute_update_queries_summoner(conn, queries)
+                    return_data = await asyncio.gather(*tasks)
+                    # match_ids, queries = zip(*return_data)
+                    tasks = [await execute_update_queries_summoner(conn, data) for data in return_data]
+
 
                     queue_op.print_counts_remain()
                     print('------------------------------\n')
@@ -66,11 +69,13 @@ async def queue_system():
                 queue_empty_comment.set_print()
 
         except Exception:
-            print(traceback.format_exc())
+            print("tt ",traceback.format_exc())
 
 
 if __name__ == '__main__':
     try:
+        # loop = asyncio.get_event_loop()
         asyncio.run(queue_system())
+        # loop.run_until_complete(queue_system(loop))
     except Exception as e:
         print(e)

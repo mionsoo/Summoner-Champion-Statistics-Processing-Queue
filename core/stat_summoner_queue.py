@@ -1,6 +1,8 @@
 import asyncio
 from datetime import datetime, date
 import traceback
+import pytz
+
 
 from common.const import Status
 from common.utils import get_changed_current_obj_status
@@ -13,44 +15,59 @@ from model.summoner_model import WaitingSummonerObj, WaitingSummonerMatchObj
 from typing import Callable, Tuple, List
 
 
-def wrap_summoner_obj(obj: Tuple[str, str, int, date, datetime]) -> WaitingSummonerObj:
+def wrap_summoner_obj(obj: Tuple[str, str, int, date, datetime], season, season_start_timestamp, season_end_timestamp) -> WaitingSummonerObj:
     platform_id, puu_id, reg_date, status, reg_datetime = obj
     return WaitingSummonerObj(
         platform_id=platform_id,
         puu_id=puu_id,
         reg_date=reg_date,
         status=status,
-        reg_datetime=reg_datetime
+        reg_datetime=reg_datetime,
+        season=season,
+        season_start_timestamp=season_start_timestamp,
+        season_end_timestamp=season_end_timestamp
     )
 
 
 class SummonerQueueOperator(QueueOperator):
     async def update_new_data(self, conn):
-        async with conn.cursor() as cursor:
-            await self.add_queue(cursor, self.waiting_status)
-            await self.add_queue(cursor, self.working_status)
+        await self.add_queue(conn, self.waiting_status)
+        await self.add_queue(conn, self.working_status)
 
-    async def add_queue(self, cursor, status_obj: QueueStatus):
+    async def add_queue(self, conn, status_obj: QueueStatus):
         if status_obj.status_criterion == Status.Waiting.code:
             status = Status.Waiting.code
             _status_obj = self.waiting_status
         else:
             status = Status.Working.code
             _status_obj = self.working_status
+        async with conn.cursor() as cursor:
 
-        await cursor.execute(
-            'SELECT platform_id, puu_id, reg_date, status, reg_datetime '
-            'FROM b2c_summoner_queue '
-            f'WHERE status={status} '
-            f'ORDER BY reg_datetime ASC '
-        )
-        result = await cursor.fetchall()
-        # new_objs = set(result)
-        new_objs = {tuple(wrap_summoner_obj(x).__dict__.values()) for x in result}
+            await cursor.execute(
+                'SELECT platform_id, puu_id, reg_date, status, reg_datetime '
+                'FROM b2c_summoner_queue '
+                f'WHERE status={status} '
+                f'ORDER BY reg_datetime ASC '
+            )
+            result = await cursor.fetchall()
+            # new_objs = set(result)
+
+            now = datetime.utcnow()
+            KST = pytz.timezone('Asia/Seoul').localize(now).tzinfo
+            current_datetime_timestamp = datetime.now(KST).timestamp()
+            await cursor.execute(
+                "SELECT season, start_timestamp, end_timestamp "
+                "FROM b2c_season_info_datetime "
+                f"WHERE {int(current_datetime_timestamp)} between start_timestamp and end_timestamp "
+                "ORDER BY start_datetime DESC ",
+            )
+            season, season_start_timestamp, season_end_timestamp = await cursor.fetchone()
+
+        new_objs = {tuple(wrap_summoner_obj(x, season=season, season_start_timestamp=season_start_timestamp, season_end_timestamp=season_end_timestamp).__dict__.values()) for x in result}
 
 
         exist_objs = {tuple(x.__dict__.values()) for x in _status_obj.deque}
-        new_objs_removed_dupl = list(map(wrap_summoner_obj, new_objs.difference(exist_objs)))
+        new_objs_removed_dupl = list(map(lambda x: wrap_summoner_obj(x[0:5], season=season, season_start_timestamp=season_start_timestamp, season_end_timestamp=season_end_timestamp), new_objs.difference(exist_objs)))
         sorted_new_objs = list(sorted(new_objs_removed_dupl, key=lambda x: x.reg_datetime))
 
         if len(exist_objs) == 0:
@@ -112,7 +129,7 @@ class SummonerQueueOperator(QueueOperator):
             #         f'and puu_id = {repr(current_obj.puu_id)} '
             #         f'and status = {current_obj.status} '
             #         f'and reg_datetime = "{str(current_obj.reg_datetime)}"')
-            return f'({repr(current_obj.puu_id)}, {repr(current_obj.platform_id)}, {changed_current_obj_status_code}, {repr(str(current_obj.reg_date))}, {repr(str(current_obj.reg_datetime))})'
+            return func_return, current_obj, changed_current_obj_status_code
 
     @staticmethod
     def search_suitable_process_func(current_obj: WaitingSummonerObj) -> Callable:

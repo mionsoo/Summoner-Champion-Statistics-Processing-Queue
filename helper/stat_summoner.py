@@ -3,8 +3,6 @@ import asyncio
 import aiohttp
 import json
 
-from common.db import connect_sql_aurora_async, RDS_INSTANCE_TYPE
-from common.const import Status
 from common.utils import get_current_datetime
 from model.summoner_model import WaitingSummonerObj
 
@@ -17,21 +15,27 @@ async def request_stats_async(current_obj, client):
         f'https://renew.deeplol.gg/batch/stat_queue_summoner?'
         f'platform_id={current_obj.platform_id}'
         f'&puu_id={current_obj.puu_id}'
+        f'&season_start_timestamp={int(current_obj.season_start_timestamp.timestamp())}'
+        f'&season_end_timestamp={int(current_obj.season_end_timestamp.timestamp())}'
     )
+
     async with client.get(url, headers=req_headers) as response:
         data = await response.read()
         r = json.loads(data)
         return r
 
 
-async def wait_func(current_obj: WaitingSummonerObj, conn=None) -> int | None:
+async def wait_func(current_obj: WaitingSummonerObj, conn=None) -> set | None:
     async with aiohttp.ClientSession() as client:
         result = await request_stats_async(current_obj, client)
 
     if result['msg'] == 'no match':
         return None
 
-    return 1
+    api_called_match_ids_stats = set(result['msg'].split(', '))
+
+
+    return api_called_match_ids_stats
 
 
 async def work_func(current_obj, conn):
@@ -39,7 +43,7 @@ async def work_func(current_obj, conn):
         result = await request_stats_async_work(current_obj, client)
 
     if len(result['msg']) > 1:
-        return 1
+        return -1
 
     return None
     #

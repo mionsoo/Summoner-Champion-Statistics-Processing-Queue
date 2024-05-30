@@ -48,7 +48,7 @@ async def main():
                             result = await cursor.fetchall()
                             match_ids = sum(list(result), ())
 
-                        tasks.append(asyncio.create_task(queue_op.process_job(current_obj, match_ids=match_ids)))
+                            tasks.append(asyncio.create_task(queue_op.process_job(current_obj, match_ids=match_ids)))
 
                     queries = await asyncio.gather(*tasks)
 

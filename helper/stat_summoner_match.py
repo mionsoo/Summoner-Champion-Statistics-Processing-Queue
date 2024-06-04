@@ -76,4 +76,4 @@ async def request_stats_async(current_obj, match_id, client):
         return [BatchStatQueueContainer(**i)for i in r['msg'].values()]
     except Exception as e:
         print(f'{current_obj.platform_id} {match_id}, error: {data.decode("utf-8")}')
-        return [f'{match_id}, error']
+        return [f'{match_id}, {current_obj.platform_id}, {current_obj.puu_id}, error']

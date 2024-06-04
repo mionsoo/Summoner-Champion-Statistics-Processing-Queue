@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from datetime import datetime, date
 
 class BatchStatQueueContainer(BaseModel):
     puu_id: str
@@ -36,3 +37,11 @@ class BatchStatQueueContainer(BaseModel):
     bot: int
     supporter: int
     cs_15: int
+
+class MatchStatsQueueContainer(BaseModel):
+    platform_id: str
+    puu_id: str
+    match_id: str
+    status: int
+    reg_date: date = date.today()
+    reg_datetime: datetime = datetime.now()

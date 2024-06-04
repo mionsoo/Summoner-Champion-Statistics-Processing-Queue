@@ -1,3 +1,4 @@
+import datetime
 from dataclasses import dataclass
 from os import path, environ
 import boto3
@@ -6,7 +7,7 @@ import pymysql
 
 import aiomysql
 from dataclasses import asdict
-from model.match_model import BatchStatQueueContainer
+from model.match_model import BatchStatQueueContainer, MatchStatsQueueContainer
 from typing import List
 from common.const import Status
 import asyncio
@@ -138,27 +139,47 @@ def check_types(value):
 def make_insert_queries(query: BatchStatQueueContainer):
     return f'{tuple(query.__dict__.values())}'
 
+def make_MatchStatsQueueContainer_insert_queries(query: MatchStatsQueueContainer):
+    return f"({', '.join([repr(q) if isinstance(q, str) else str(q) if isinstance(q, int) else repr(str(q))  for q in query.__dict__.values()])})"
+    # return f'{tuple(query.__dict__.values())}'
+
 def make_insert_duplicate_keys(table_alias):
     return ','.join([f' {i}={table_alias}.{i}' for i in BatchStatQueueContainer.__dict__['__fields__'].keys()])
 
 
-async def update_current_obj_status(conn, match_id_lists, error_match_id_lists):
-    async with conn.cursor() as cursor:
-        query = (f'UPDATE b2c_summoner_match_queue '
-                 f'set status={Status.Success.code} '
-                 f'where match_id=%s')
-        await cursor.executemany(query, match_id_lists)
-        await conn.commit()
+async def update_current_obj_status(conn, match_id_lists:List[MatchStatsQueueContainer], error_match_id_lists:List[MatchStatsQueueContainer]):
+    match_id_lists_query = ', '.join([make_MatchStatsQueueContainer_insert_queries(query) for query in match_id_lists])
+    error_match_id_lists_query = ','.join([make_MatchStatsQueueContainer_insert_queries(query) for query in error_match_id_lists])
 
-        query = (f'UPDATE b2c_summoner_match_queue '
-                 f'set status={Status.Error.code} '
-                 f'where match_id=%s')
-        await cursor.executemany(query, error_match_id_lists)
+    async with conn.cursor() as cursor:
+        query = (f'INSERT INTO b2c_summoner_match_queue(platform_id, puu_id, match_id, status, reg_date, reg_datetime) '
+                 f'values {match_id_lists_query} as t '
+                 f'ON DUPLICATE KEY UPDATE status = t.status')
+        await cursor.execute(query)
         await conn.commit()
+        if error_match_id_lists_query:
+            query = (f'INSERT INTO b2c_summoner_match_queue(platform_id, puu_id, match_id, status, reg_date, reg_datetime) '
+                     f'values {error_match_id_lists_query} as t '
+                     f'ON DUPLICATE KEY UPDATE status = t.status')
+            await cursor.execute(query)
+            await conn.commit()
+
+
+        # query = (f'UPDATE b2c_summoner_match_queue '
+        #          f'set status={Status.Success.code} '
+        #          f'where match_id=%s')
+        # await cursor.executemany(query, match_id_lists)
+        # await conn.commit()
+        #
+        # query = (f'UPDATE b2c_summoner_match_queue '
+        #          f'set status={Status.Error.code} '
+        #          f'where match_id=%s')
+        # await cursor.executemany(query, error_match_id_lists)
+        # await conn.commit()
 
 
 async def execute_update_queries_match(conn, t_queries: List[BatchStatQueueContainer|str]):
-    match_id_lists, error_match_id_lists = zip(*[[None, query.split(', ')[0]] if 'error' in query else [query.match_id, None] for query in t_queries ])
+    match_id_lists, error_match_id_lists = zip(*[[None, MatchStatsQueueContainer(match_id=query.split(', ')[0], platform_id=query.platform_id, puu_id=query.puu_id, status=Status.Error.code)] if 'error' in query else [MatchStatsQueueContainer(match_id=query.match_id, platform_id=query.platform_id, puu_id=query.puu_id, status=Status.Success.code), None] for query in t_queries ])
     error_match_id_lists = list(filter(lambda item: item is not None, error_match_id_lists))
     match_id_lists = list(filter(lambda item: item is not None, match_id_lists))
     async with conn.cursor() as cursor:

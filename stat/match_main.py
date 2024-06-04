@@ -47,14 +47,10 @@ async def main():
                             )
                             result = await cursor.fetchall()
                             match_ids = sum(list(result), ())
-
                             tasks.append(asyncio.create_task(queue_op.process_job(current_obj, match_ids=match_ids)))
 
                     queries = await asyncio.gather(*tasks)
-
-
                     t_queries = sum(chain.from_iterable(queries), [])
-
 
                     match_id_lists, error_match_id_lists = await execute_update_queries_match(conn, t_queries)
                     await update_current_obj_status(conn, match_id_lists, error_match_id_lists)

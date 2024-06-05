@@ -5,6 +5,7 @@ import sys
 sys.path.append("/usr/src/app")
 
 from common.db import connect_sql_aurora_async, execute_update_queries_summoner, RDS_INSTANCE_TYPE
+from common.const import S_EXECUTE_SUMMONER_COUNT
 from common.utils import get_current_datetime
 from core.stat_summoner_queue import SummonerQueueOperator
 from core.stat_queue_sys import QueueEmptyComment
@@ -55,11 +56,10 @@ async def queue_system():
                 await asyncio.sleep(20)
 
             elif queue_op.is_data_exists():
-                current_objs = await queue_op.get_current_obj(3)
+                current_objs = await queue_op.get_current_obj(S_EXECUTE_SUMMONER_COUNT)
                 if current_objs is not None:
                     tasks = [asyncio.create_task(queue_op.process_job(current_obj, conn)) for current_obj in current_objs]
                     return_data = await asyncio.gather(*tasks)
-                    # match_ids, queries = zip(*return_data)
                     tasks = [await execute_update_queries_summoner(conn, data) for data in return_data]
 
 

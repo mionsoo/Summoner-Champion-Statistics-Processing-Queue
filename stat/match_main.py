@@ -4,7 +4,7 @@ from itertools import chain
 import sys
 sys.path.append("/usr/src/app")
 from common.utils import get_current_datetime
-from common.const import Status
+from common.const import Status, M_EXECUTE_SUMMONER_COUNT
 from common.db import connect_sql_aurora_async, RDS_INSTANCE_TYPE, execute_update_queries_match, update_current_obj_status
 from core.stat_summoner_match_queue import SummonerMatchQueueOperator
 from core.stat_queue_sys import QueueEmptyComment
@@ -31,7 +31,7 @@ async def main():
                 await asyncio.sleep(20)
 
             elif queue_op.is_data_exists():
-                current_objs = await queue_op.get_current_obj(3)
+                current_objs = await queue_op.get_current_obj(M_EXECUTE_SUMMONER_COUNT)
                 if None in current_objs:
                     pass
                 else:

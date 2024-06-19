@@ -149,12 +149,19 @@ def make_insert_duplicate_keys(table_alias):
 
 async def update_current_obj_status(conn, match_id_lists: List[MatchStatsQueueContainer],
                                     error_match_id_lists: List[MatchStatsQueueContainer], current_objs):
+
     match_id_lists2 = []
-    for match_data in match_id_lists:
-        for current_obj in current_objs:
+    error_match_id_lists2 = []
+    for current_obj in current_objs:
+        for match_data in match_id_lists:
             if match_data.puu_id == current_obj.puu_id:
                 match_data.platform_id = current_obj.platform_id
                 match_id_lists2.append(match_data)
+
+        for match_data in error_match_id_lists:
+            if match_data.puu_id == current_obj.puu_id:
+                match_data.platform_id = current_obj.platform_id
+                error_match_id_lists2.append(match_data)
 
 
 

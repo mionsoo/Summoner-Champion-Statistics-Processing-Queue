@@ -147,21 +147,33 @@ def make_insert_duplicate_keys(table_alias):
     return ','.join([f' {i}={table_alias}.{i}' for i in BatchStatQueueContainer.__dict__['__fields__'].keys()])
 
 
-async def update_current_obj_status(conn, match_id_lists:List[MatchStatsQueueContainer], error_match_id_lists:List[MatchStatsQueueContainer]):
-    match_id_lists_query = ', '.join([make_MatchStatsQueueContainer_insert_queries(query) for query in match_id_lists])
+async def update_current_obj_status(conn, match_id_lists: List[MatchStatsQueueContainer],
+                                    error_match_id_lists: List[MatchStatsQueueContainer], current_objs):
+    match_id_lists2 = []
+    for match_data in match_id_lists:
+        for current_obj in current_objs:
+            if match_data.puu_id == current_obj.puu_id:
+                match_data.platform_id = current_obj.platform_id
+                match_id_lists2.append(match_data)
+
+
+
+    match_id_lists_query = ', '.join([make_MatchStatsQueueContainer_insert_queries(query) for query in match_id_lists2])
     error_match_id_lists_query = ','.join([make_MatchStatsQueueContainer_insert_queries(query) for query in error_match_id_lists])
 
     async with conn.cursor() as cursor:
         query = (f'INSERT INTO b2c_summoner_match_queue(platform_id, puu_id, match_id, status, reg_date, reg_datetime) '
                  f'values {match_id_lists_query} as t '
                  f'ON DUPLICATE KEY UPDATE status = t.status')
+
         await cursor.execute(query)
         await conn.commit()
+
 
         if error_match_id_lists_query:
             query = (f'INSERT INTO b2c_summoner_match_queue(platform_id, puu_id, match_id, status, reg_date, reg_datetime) '
                      f'values {error_match_id_lists_query} as t '
-                     f'ON DUPLICATE KEY UPDATE status = t.status')
+                     f'ON DUPLICATE KEY UPDATE status = t.status, reg_date = t.reg_date, reg_datetime = t.reg_datetime')
             await cursor.execute(query)
             await conn.commit()
 

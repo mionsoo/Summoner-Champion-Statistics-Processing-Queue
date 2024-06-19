@@ -53,7 +53,7 @@ async def main():
                     t_queries = sum(chain.from_iterable(queries), [])
 
                     match_id_lists, error_match_id_lists = await execute_update_queries_match(conn, t_queries)
-                    await update_current_obj_status(conn, match_id_lists, error_match_id_lists)
+                    await update_current_obj_status(conn, match_id_lists, error_match_id_lists, current_objs)
                     await queue_op.print_counts_remain(conn)
                     print('------------------------------\n')
 

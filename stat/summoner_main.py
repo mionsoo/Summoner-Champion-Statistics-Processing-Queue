@@ -62,7 +62,6 @@ async def queue_system():
                     return_data = await asyncio.gather(*tasks)
                     tasks = [await execute_update_queries_summoner(conn, data) for data in return_data]
 
-
                     queue_op.print_counts_remain()
                     print('------------------------------\n')
 

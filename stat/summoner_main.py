@@ -77,8 +77,8 @@ async def queue_system():
 
                     tasks = await execute_update_queries_summoner(conn, return_datas)
 
-                    queue_op.print_counts_remain()
-                    print('------------------------------\n')
+                queue_op.print_counts_remain()
+                print('------------------------------\n')
 
                 queue_empty_comment.set_print()
 

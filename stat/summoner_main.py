@@ -4,8 +4,8 @@ import traceback
 import sys
 sys.path.append("/usr/src/app")
 
-from common.db import connect_sql_aurora_async, execute_update_queries_summoner, RDS_INSTANCE_TYPE
-from common.const import S_EXECUTE_SUMMONER_COUNT
+from common.db import connect_sql_aurora_async, execute_update_queries_summoner_wait, RDS_INSTANCE_TYPE, execute_update_queries_summoner
+from common.const import S_EXECUTE_SUMMONER_COUNT, Status
 from common.utils import get_current_datetime
 from core.stat_summoner_queue import SummonerQueueOperator
 from core.stat_queue_sys import QueueEmptyComment
@@ -57,10 +57,25 @@ async def queue_system():
 
             elif queue_op.is_data_exists():
                 current_objs = await queue_op.get_current_obj(S_EXECUTE_SUMMONER_COUNT)
-                if current_objs is not None:
+                if current_objs is None:
+                    continue
+
+                if current_objs[0].status == Status.Waiting.code:
                     tasks = [asyncio.create_task(queue_op.process_job(current_obj, conn)) for current_obj in current_objs]
                     return_data = await asyncio.gather(*tasks)
-                    tasks = [await execute_update_queries_summoner(conn, data) for data in return_data]
+                    tasks = [await execute_update_queries_summoner_wait(conn, data) for data in return_data]
+
+                elif current_objs[0].status == Status.Working.code:
+                    return_datas = []
+                    skip_thld = 20
+                    for start_idx in range(0, len(current_objs), skip_thld):
+                        end_idx = start_idx + skip_thld
+                        tasks = [asyncio.create_task(queue_op.process_job(current_obj, conn)) for current_obj in current_objs[start_idx:end_idx]]
+                        return_data = await asyncio.gather(*tasks)
+                        return_datas.extend(return_data)
+
+
+                    tasks = await execute_update_queries_summoner(conn, return_datas)
 
                     queue_op.print_counts_remain()
                     print('------------------------------\n')

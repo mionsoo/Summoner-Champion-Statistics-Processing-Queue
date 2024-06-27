@@ -84,7 +84,7 @@ class SummonerQueueOperator(QueueOperator):
         elif self.is_burst_switch_on:
             return await self.get_n_time_popped_value(self.working_status, self.working_status.count)
 
-        elif not self.is_burst_switch_on and self.calc_working_ratio() >= 0.8:
+        elif not self.is_burst_switch_on and self.calc_working_ratio() >= 0.4:
             self.burst_switch_on()
 
         if self.waiting_status.count >= 1:

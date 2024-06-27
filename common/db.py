@@ -229,45 +229,66 @@ def make_bulk_insert_query_values_summoner_match_queue(current_obj, match_id) ->
 def make_summoner_insert_query(current_obj, changed_current_obj_status_code):
     return f'({repr(current_obj.puu_id)}, {repr(current_obj.platform_id)}, {changed_current_obj_status_code}, {repr(str(current_obj.reg_date))}, {repr(str(current_obj.reg_datetime))})'
 
-async def execute_update_queries_summoner(conn, data):
-    match_ids, current_obj, changed_current_obj_status_code = data
+async def execute_update_queries_summoner(conn, return_datas):
     async with conn.cursor() as cursor:
-        if match_ids != -1 and match_ids is not None:
+        bulk_item = ', '.join(
+            [make_summoner_insert_query(current_obj, changed_current_obj_status_code) for match_ids, current_obj, changed_current_obj_status_code in return_datas])
+
+        # queries = make_summoner_insert_query(current_obj, changed_current_obj_status_code)
+        await cursor.execute(
+            'INSERT INTO b2c_summoner_queue(puu_id, platform_id, status, reg_date, reg_datetime) '
+            f'VALUES{bulk_item} as queue '
+            f'ON DUPLICATE KEY UPDATE status=queue.status'
+        )
+        # for query in queries:
+        #     await cursor.execute(query)
+        await conn.commit()
+
+        return 0
+
+async def execute_update_queries_summoner_wait(conn, data):
+    match_ids, current_obj, changed_current_obj_status_code = data
+    if match_ids == -1 or match_ids is None:
+        return 0
+
+    async with conn.cursor() as cursor:
+        try:
+            await cursor.execute(
+                'SELECT match_id '
+                'FROM b2c_summoner_champion_stats_partitioned '
+                f'WHERE puu_id = {repr(current_obj.puu_id)} '
+                f'and platform_id = {repr(current_obj.platform_id)} '
+                f'and season = {current_obj.season} '
+                f'and queue_id in (420, 440, 450, 900, 1900)'
+            )
+            db_called_match_ids = await cursor.fetchall()
+            db_called_match_ids = set(sum(db_called_match_ids, ()))
+            remove_duplicated_match_ids = match_ids.difference(db_called_match_ids)
+
+            bulk_item = ', '.join(
+                [make_bulk_insert_query_values_summoner_match_queue(current_obj, match_id) for match_id in
+                 remove_duplicated_match_ids])
+        except:
+            pass
+
+        if current_obj.status == Status.Waiting.code and bulk_item:
             try:
                 await cursor.execute(
-                    'SELECT match_id '
-                    'FROM b2c_summoner_champion_stats_partitioned '
-                    f'WHERE puu_id = {repr(current_obj.puu_id)} '
-                    f'and platform_id = {repr(current_obj.platform_id)} '
-                    f'and season = {current_obj.season} '
-                    f'and queue_id in (420, 440, 450, 900, 1900)'
+                    'INSERT ignore INTO b2c_summoner_match_queue '
+                    '(platform_id, puu_id, match_id, status) '
+                    f'VALUES {bulk_item}'
                 )
-                db_called_match_ids = await cursor.fetchall()
-                db_called_match_ids = set(sum(db_called_match_ids, ()))
-                remove_duplicated_match_ids = match_ids.difference(db_called_match_ids)
-
-                bulk_item = ', '.join(
-                    [make_bulk_insert_query_values_summoner_match_queue(current_obj, match_id) for match_id in remove_duplicated_match_ids])
-            except:
-                print(1)
-            if current_obj.status == Status.Waiting.code  and bulk_item:
-                try:
-                    await cursor.execute(
-                        'INSERT ignore INTO b2c_summoner_match_queue '
-                        '(platform_id, puu_id, match_id, status) '
-                        f'VALUES {bulk_item}'
-                    )
-                    await conn.commit()
-                except aiomysql.IntegrityError:
-                    pass
-                except pymysql.err.OperationalError:
-                    await asyncio.sleep(3)
-                    await cursor.execute(
-                        'INSERT ignore INTO b2c_summoner_match_queue '
-                        '(platform_id, puu_id, match_id, status) '
-                        f'VALUES {bulk_item}'
-                    )
-                    await conn.commit()
+                await conn.commit()
+            except aiomysql.IntegrityError:
+                pass
+            except pymysql.err.OperationalError:
+                await asyncio.sleep(3)
+                await cursor.execute(
+                    'INSERT ignore INTO b2c_summoner_match_queue '
+                    '(platform_id, puu_id, match_id, status) '
+                    f'VALUES {bulk_item}'
+                )
+                await conn.commit()
 
         queries = make_summoner_insert_query(current_obj, changed_current_obj_status_code)
         await cursor.execute(

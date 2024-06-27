@@ -42,6 +42,9 @@ async def work_func(current_obj, conn):
     async with aiohttp.ClientSession() as client:
         result = await request_stats_async_work(current_obj, client)
 
+    if result is None:
+        return None
+
     if len(result['msg']) > 1:
         return -1
 
@@ -124,7 +127,10 @@ async def request_stats_async_work(current_obj, client):
         f'platform_id={current_obj.platform_id}'
         f'&puu_id={current_obj.puu_id}'
     )
-    async with client.get(url, headers=req_headers) as response:
-        data = await response.read()
-        r = json.loads(data)
-        return r
+    try:
+        async with client.get(url, headers=req_headers) as response:
+            data = await response.read()
+            r = json.loads(data)
+            return r
+    except json.decoder.JSONDecodeError:
+        return None

@@ -97,8 +97,8 @@ class SummonerMatchQueueOperator(QueueOperator):
             print(traceback.format_exc())
 
         finally:
-            self.update_last_obj(current_obj)
-            self.update_last_change_status(changed_current_obj_status_code)
+            self.change_last_obj(current_obj)
+            self.change_last_status(changed_current_obj_status_code)
             # return self.update_processed_match_status(changed_current_obj_status_code, current_obj)
             return queries
 

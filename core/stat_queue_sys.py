@@ -90,6 +90,7 @@ class QueueOperator(metaclass=ABCMeta):
     def burst_switch_on(self):
         self.is_burst_switch_on = True
 
+
     def calc_total_count(self):
         return self.waiting_status.count + self.working_status.count
 
@@ -105,11 +106,13 @@ class QueueOperator(metaclass=ABCMeta):
         else:
             return 0
 
-    def update_last_obj(self, current_obj: WaitingSummonerObj | WaitingSummonerMatchObj):
+
+    def change_last_obj(self, current_obj: WaitingSummonerObj | WaitingSummonerMatchObj):
         self.last_obj = current_obj
 
-    def update_last_change_status(self, current_change_status_code: int):
+    def change_last_status(self, current_change_status_code: int):
         self.last_change_status_code = current_change_status_code
+
 
     @abstractmethod
     def get_current_obj(self, pop_count=0) -> WaitingSummonerObj | WaitingSummonerMatchObj | None:
@@ -120,6 +123,7 @@ class QueueOperator(metaclass=ABCMeta):
 
     def is_data_exists(self) -> bool:
         return self.working_status.count != 0 or self.waiting_status.count != 0
+
 
     @abstractmethod
     def update_new_data(self, conn):
@@ -140,5 +144,5 @@ class QueueOperator(metaclass=ABCMeta):
 
     @staticmethod
     async def sleep_queue():
-        print('sleep')
+        print('queue sleep 20 sec')
         await asyncio.sleep(20)

@@ -104,31 +104,25 @@ class SummonerQueueOperator(QueueOperator):
         return [await status_obj.pop() for _ in range(pop_count)]
 
     async def process_job(self, current_obj: WaitingSummonerObj, conn=None, match_ids=None):
+        changed_current_obj_status_code = Status.Error.code
+        func_return = None
         try:
             suitable_func = self.search_suitable_process_func(current_obj)
             func_return = await suitable_func(current_obj, conn)
             changed_current_obj_status_code = await get_changed_current_obj_status(current_obj, func_return)
 
-        except Exception:
-            changed_current_obj_status_code = Status.Error.code
+        except:
             if current_obj.status == Status.Waiting.code:
                 await self.waiting_status.append(current_obj)
+
             elif current_obj.status == Status.Working.code:
                 await self.working_status.append(current_obj)
             print(traceback.format_exc())
 
         finally:
-            # if current_obj.status == Status.Working.code and changed_current_obj_status_code == Status.Success.code:
-            #     await update_summoner_stat_dynamo(current_obj)
-            self.update_last_obj(current_obj)
-            self.update_last_change_status(changed_current_obj_status_code)
+            self.change_last_obj(current_obj)
+            self.change_last_status(changed_current_obj_status_code)
 
-            # return ('UPDATE b2c_summoner_queue '
-            #         f'SET status = {changed_current_obj_status_code} '
-            #         f'WHERE platform_id = {repr(current_obj.platform_id)} '
-            #         f'and puu_id = {repr(current_obj.puu_id)} '
-            #         f'and status = {current_obj.status} '
-            #         f'and reg_datetime = "{str(current_obj.reg_datetime)}"')
             return func_return, current_obj, changed_current_obj_status_code
 
     @staticmethod

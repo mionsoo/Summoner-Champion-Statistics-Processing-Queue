@@ -45,15 +45,11 @@ async def queue_system():
         try:
             await queue_op.update_new_data(conn)
 
-            if queue_op.is_all_queue_is_empty() and queue_empty_comment.is_set_print():
-                print(f'{get_current_datetime()} | Queue is Empty')
-                print('------------------------------\n')
+            if queue_op.is_all_job_done() and queue_empty_comment.is_set_print():
+                await queue_empty_comment.print_job_ended()
 
-                queue_empty_comment.set_printed()
-
-            elif queue_op.is_all_queue_is_empty():
-                print('sleep')
-                await asyncio.sleep(20)
+            elif queue_op.is_all_job_done():
+                await queue_op.sleep_queue()
 
             elif queue_op.is_data_exists():
                 current_objs = await queue_op.get_current_obj(S_EXECUTE_SUMMONER_COUNT)
@@ -78,7 +74,7 @@ async def queue_system():
                 queue_op.print_counts_remain()
                 print('------------------------------\n')
 
-                queue_empty_comment.set_print()
+                queue_empty_comment.set_job_not_done()
 
         except Exception:
             print("tt ",traceback.format_exc())

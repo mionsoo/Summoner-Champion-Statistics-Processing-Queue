@@ -1,25 +1,34 @@
 import asyncio
 
 from model.summoner_model import WaitingSummonerObj, WaitingSummonerMatchObj
+
 from abc import *
 
 from collections import deque
 from typing import Deque, List
 from common.const import Status
+from common.utils import get_current_datetime
+
 
 
 class QueueEmptyComment:
     def __init__(self):
         self.flag = True
 
-    def set_printed(self):
+    def set_job_done(self):
         self.flag = False
 
-    def set_print(self):
+    def set_job_not_done(self):
         self.flag = True
 
     def is_set_print(self):
         return self.flag
+
+    async def print_job_ended(self):
+        print(f'{get_current_datetime()} | Queue is Empty')
+        print('------------------------------\n')
+        self.set_job_done()
+        await asyncio.sleep(20)
 
 
 class QueueStatus:
@@ -106,7 +115,7 @@ class QueueOperator(metaclass=ABCMeta):
     def get_current_obj(self, pop_count=0) -> WaitingSummonerObj | WaitingSummonerMatchObj | None:
         """ Abstract """
 
-    def is_all_queue_is_empty(self) -> bool:
+    def is_all_job_done(self) -> bool:
         return self.working_status.count == 0 and self.waiting_status.count == 0
 
     def is_data_exists(self) -> bool:
@@ -128,3 +137,8 @@ class QueueOperator(metaclass=ABCMeta):
     @abstractmethod
     def print_counts_remain(self, conn=None):
         pass
+
+    @staticmethod
+    async def sleep_queue():
+        print('sleep')
+        await asyncio.sleep(20)

@@ -1,6 +1,7 @@
 import asyncio
 
 from model.summoner_model import WaitingSummonerObj, WaitingSummonerMatchObj
+from core.stat_job import JobResult
 
 from abc import *
 
@@ -32,29 +33,29 @@ class QueueEmptyComment:
 
 
 class QueueStatus:
-    def __init__(self, criterion: int):
-        self.status_criterion = criterion
-        self.count = 0
+    def __init__(self, queue_type: int):
+        self.status_type = queue_type
+        self.length = 0
         self.deque: Deque[WaitingSummonerObj | WaitingSummonerMatchObj] = deque()
 
     async def reinit(self, objs: List[WaitingSummonerObj | WaitingSummonerMatchObj]):
         await asyncio.sleep(0)
         self.deque = deque(objs)
-        self.count = len(self.deque)
+        self.length = len(self.deque)
 
     async def add_count(self):
         await asyncio.sleep(0)
-        self.count += 1
+        self.length += 1
 
     async def sub_count(self):
         await asyncio.sleep(0)
-        self.count -= 1
+        self.length -= 1
 
     async def extend(self, objs: List[WaitingSummonerObj | WaitingSummonerMatchObj]):
         await asyncio.sleep(0)
 
         self.deque.extend(objs)
-        self.count += len(objs)
+        self.length += len(objs)
 
     async def append(self, obj: WaitingSummonerObj | WaitingSummonerMatchObj):
         await asyncio.sleep(0)
@@ -69,7 +70,7 @@ class QueueStatus:
         except IndexError:
             popped_value = WaitingSummonerObj()
         else:
-            if popped_value.status == self.status_criterion:
+            if popped_value.status == self.status_type:
                 await self.sub_count()
 
         return popped_value
@@ -77,8 +78,8 @@ class QueueStatus:
 
 class QueueOperator(metaclass=ABCMeta):
     def __init__(self):
-        self.waiting_status = QueueStatus(criterion=Status.Waiting.code)
-        self.working_status = QueueStatus(criterion=Status.Working.code)
+        self.waiting_queue = QueueStatus(queue_type=Status.Waiting.code)
+        self.working_queue = QueueStatus(queue_type=Status.Working.code)
         self.last_obj = None
         self.last_change_status_code = None
         self.ratio = (0.0, 0.0)
@@ -92,17 +93,17 @@ class QueueOperator(metaclass=ABCMeta):
 
 
     def calc_total_count(self):
-        return self.waiting_status.count + self.working_status.count
+        return self.waiting_queue.length + self.working_queue.length
 
     def calc_waiting_ratio(self):
         if self.calc_total_count():
-            return self.waiting_status.count / self.calc_total_count()
+            return self.waiting_queue.length / self.calc_total_count()
         else:
             return 0
 
     def calc_working_ratio(self):
         if self.calc_total_count():
-            return self.working_status.count / self.calc_total_count()
+            return self.working_queue.length / self.calc_total_count()
         else:
             return 0
 
@@ -119,24 +120,22 @@ class QueueOperator(metaclass=ABCMeta):
         """ Abstract """
 
     def is_all_job_done(self) -> bool:
-        return self.working_status.count == 0 and self.waiting_status.count == 0
+        return self.working_queue.length == 0 and self.waiting_queue.length == 0
 
     def is_data_exists(self) -> bool:
-        return self.working_status.count != 0 or self.waiting_status.count != 0
+        return self.working_queue.length != 0 or self.waiting_queue.length != 0
 
 
     @abstractmethod
     def update_new_data(self, conn):
         pass
 
-    @abstractmethod
-    def process_job(self, current_obj: WaitingSummonerObj | WaitingSummonerMatchObj, conn=None, match_ids=None):
-        pass
+    async def go_back_to_queue(self, job_result: JobResult):
+        if job_result.target_obj== Status.Waiting.code:
+            await self.waiting_queue.append(job_result.target_obj)
 
-    @staticmethod
-    @abstractmethod
-    def search_suitable_process_func(current_obj: WaitingSummonerObj | WaitingSummonerMatchObj):
-        pass
+        elif job_result.target_obj == Status.Working.code:
+            await self.working_queue.append(job_result.target_obj)
 
     @abstractmethod
     def print_counts_remain(self, conn=None):

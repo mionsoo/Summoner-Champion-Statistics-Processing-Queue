@@ -5,6 +5,7 @@ import os
 import pymysql
 
 import aiomysql
+from core.stat_job import JobResult
 from dataclasses import asdict
 from model.match_model import BatchStatQueueContainer, MatchStatsQueueContainer
 from typing import List
@@ -138,7 +139,8 @@ def check_types(value):
 def make_insert_champion_stats_queries(query: BatchStatQueueContainer):
     return f'{tuple(query.__dict__.values())}'
 
-def make_insert_summoner_match_query(query: MatchStatsQueueContainer):
+def make_insert_summoner_match_query(query: MatchStatsQueueContainer, p_id):
+    query.asd(p_id)
     return f"({', '.join([repr(q) if isinstance(q, str) else str(q) if isinstance(q, int) else repr(str(q))  for q in query.__dict__.values()])})"
     # return f'{tuple(query.__dict__.values())}'
 
@@ -148,25 +150,25 @@ def make_insert_duplicate_keys(table_alias):
 
 async def update_current_obj_status(conn, current_objs, t_queries: List[BatchStatQueueContainer | str]):
     sorted_stats_queue_containers = [sort_match_stats_queue_container(query) for query in t_queries]
-    sorted_stats_queue_containers = list(filter(lambda item: item is not None, sorted_stats_queue_containers))
+    p_id = {i.puu_id: i.platform_id for i in current_objs}
+    match_containers, error_match_containers = zip(*sorted_stats_queue_containers)
+    match_containers = list(filter(lambda item: item is not None and item.puu_id in p_id.keys(), match_containers))
+    error_match_containers = list(filter(lambda item: item is not None and item.puu_id in p_id.keys(), error_match_containers))
 
-    match_containers, error_match_containers = zip(*[sorted_stats_queue_containers])
+    # match_containers2 = []
+    # error_match_containers2 = []
+    # for current_obj in current_objs:
+    #     for container in filter(lambda x: x.puu_id == current_obj.puu_id, match_containers):
+    #         container.platform_id = current_obj.platform_id
+    #         match_containers2.append(container)
+    #
+    #     for container in filter(lambda x: x.puu_id == current_obj.puu_id, error_match_containers):
+    #         # if container.puu_id == current_obj.puu_id:
+    #         container.platform_id = current_obj.platform_id
+    #         error_match_containers2.append(container)
 
-    match_containers2 = []
-    error_match_containers2 = []
-    for current_obj in current_objs:
-        for container in match_containers:
-            if container.puu_id == current_obj.puu_id:
-                container.platform_id = current_obj.platform_id
-                match_containers2.append(container)
-
-        for container in error_match_containers:
-            if container.puu_id == current_obj.puu_id:
-                container.platform_id = current_obj.platform_id
-                error_match_containers2.append(container)
-
-    match_id_lists_query = ', '.join([make_insert_summoner_match_query(query) for query in match_containers2])
-    error_match_id_lists_query = ','.join([make_insert_summoner_match_query(query) for query in error_match_containers])
+    match_id_lists_query = ', '.join([make_insert_summoner_match_query(query, p_id) for query in match_containers])
+    error_match_id_lists_query = ','.join([make_insert_summoner_match_query(query, p_id) for query in error_match_containers])
 
     async with conn.cursor() as cursor:
         if error_match_id_lists_query:
@@ -202,7 +204,7 @@ def sort_match_stats_queue_container(query: BatchStatQueueContainer|str):
     return [container, None]
 
 
-async def execute_update_queries_match(conn, t_queries: List[BatchStatQueueContainer|str]):
+async def execute_match_insert_queries(conn, t_queries: List[BatchStatQueueContainer|str]):
     value_query = ','.join([make_insert_champion_stats_queries(query) for query in t_queries if 'error' not in query])
     if value_query:
         table_alias = 'stats_p'

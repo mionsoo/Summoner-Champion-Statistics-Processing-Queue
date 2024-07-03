@@ -49,25 +49,7 @@ async def work_func(current_obj, conn):
         return -1
 
     return None
-    #
-    # _conn = await connect_sql_aurora_async(RDS_INSTANCE_TYPE.READ)
-    # async with conn.cursor() as cursor:
-    #     await cursor.execute(
-    #         'SELECT match_id, status '
-    #         'FROM b2c_summoner_match_queue '
-    #         f'WHERE platform_id={repr(current_obj.platform_id)} '
-    #         f'and puu_id={repr(current_obj.puu_id)} '
-    #         f'and (status != {Status.Success.code} '
-    #         f'and status != {Status.Error.code})'
-    #     )
-    #
-    # not_finished_jobs = await cursor.fetchall()
-    #
-    #
-    # if len(not_finished_jobs) >= 1:
-    #     return 1
-    #
-    # return None
+
 
 
 async def get_season(client):

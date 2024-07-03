@@ -31,16 +31,16 @@ def wrap_summoner_obj(obj: Tuple[str, str, int, date, datetime], season, season_
 
 class SummonerQueueOperator(QueueOperator):
     async def update_new_data(self, conn):
-        await self.add_queue(conn, self.waiting_status)
-        await self.add_queue(conn, self.working_status)
+        await self.add_queue(conn, self.waiting_queue)
+        await self.add_queue(conn, self.working_queue)
 
     async def add_queue(self, conn, status_obj: QueueStatus):
-        if status_obj.status_criterion == Status.Waiting.code:
+        if status_obj.status_type == Status.Waiting.code:
             status = Status.Waiting.code
-            _status_obj = self.waiting_status
+            _status_obj = self.waiting_queue
         else:
             status = Status.Working.code
-            _status_obj = self.working_status
+            _status_obj = self.working_queue
         async with conn.cursor() as cursor:
 
             await cursor.execute(
@@ -82,24 +82,24 @@ class SummonerQueueOperator(QueueOperator):
             self.burst_switch_off()
 
         elif self.is_burst_switch_on:
-            return await self.get_n_time_popped_value(self.working_status, self.working_status.count)
+            return await self.get_n_time_popped_value(self.working_queue, self.working_queue.length)
 
         elif not self.is_burst_switch_on and self.calc_working_ratio() >= 0.4:
             self.burst_switch_on()
 
-        if self.waiting_status.count >= 1:
-            return await self.get_n_time_popped_value(self.waiting_status, pop_count)
+        if self.waiting_queue.length >= 1:
+            return await self.get_n_time_popped_value(self.waiting_queue, pop_count)
 
-        elif self.working_status.count >= 1:
-            return await self.get_n_time_popped_value(self.working_status, pop_count)
+        elif self.working_queue.length >= 1:
+            return await self.get_n_time_popped_value(self.working_queue, pop_count)
 
         else:
             return [None]
 
     @staticmethod
     async def get_n_time_popped_value(status_obj: QueueStatus, pop_count) -> List[WaitingSummonerObj | WaitingSummonerMatchObj]:
-        if status_obj.count < pop_count:
-            pop_count = pop_count - (pop_count - status_obj.count)
+        if status_obj.length < pop_count:
+            pop_count = pop_count - (pop_count - status_obj.length)
 
         return [await status_obj.pop() for _ in range(pop_count)]
 
@@ -113,10 +113,10 @@ class SummonerQueueOperator(QueueOperator):
 
         except:
             if current_obj.status == Status.Waiting.code:
-                await self.waiting_status.append(current_obj)
+                await self.waiting_queue.append(current_obj)
 
             elif current_obj.status == Status.Working.code:
-                await self.working_status.append(current_obj)
+                await self.working_queue.append(current_obj)
             print(traceback.format_exc())
 
         finally:
@@ -134,5 +134,5 @@ class SummonerQueueOperator(QueueOperator):
 
     def print_counts_remain(self, conn=None):
         print(f'\n - Remain\n'
-              f'\tWaiting: {self.waiting_status.count} ({round(self.calc_waiting_ratio() * 100, 2)}%)\n'
-              f'\tWorking: {self.working_status.count} ({round(self.calc_working_ratio() * 100, 2)}%)')
+              f'\tWaiting: {self.waiting_queue.length} ({round(self.calc_waiting_ratio() * 100, 2)}%)\n'
+              f'\tWorking: {self.working_queue.length} ({round(self.calc_working_ratio() * 100, 2)}%)')

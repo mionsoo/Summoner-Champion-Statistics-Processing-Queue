@@ -45,3 +45,7 @@ class MatchStatsQueueContainer(BaseModel):
     status: int
     reg_date: date = date.today()
     reg_datetime: datetime = datetime.now()
+
+
+    def asd(self, p_id):
+        self.platform_id = p_id[self.puu_id]

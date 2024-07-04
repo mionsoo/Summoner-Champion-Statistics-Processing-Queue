@@ -8,9 +8,9 @@ from helper.queries import execute_matches
 sys.path.append("/usr/src/app")
 from common.const import M_EXECUTE_SUMMONER_COUNT, Status
 from common.db import connect_sql_aurora_async, RDS_INSTANCE_TYPE, execute_match_insert_queries, update_current_obj_status
-from core.stat_match_queue import SummonerMatchQueueOperator
-from core.stat_queue_sys import QueueEmptyComment
-from core.stat_match_job import StatQueueMatchJob
+from core.Queue.stat_match_queue import SummonerMatchQueueOperator
+from core.Queue.stat_queue_sys import QueueEmptyComment
+from core.Job.stat_match_job import StatQueueMatchJob
 import asyncio
 
 

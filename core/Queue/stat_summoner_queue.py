@@ -6,7 +6,7 @@ import pytz
 
 from common.const import Status
 from common.utils import get_changed_current_obj_status
-from core.stat_queue_sys import QueueOperator, QueueStatus
+from core.Queue.stat_queue_sys import QueueOperator, QueueStatus
 
 from helper.stat_summoner import wait_func, work_func
 

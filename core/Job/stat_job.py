@@ -13,7 +13,7 @@ class Job(metaclass=ABCMeta):
         self.obj = current_obj
 
     @abstractmethod
-    async def process(self, match_ids):
+    async def process(self, match_ids=None):
         pass
 
     @staticmethod

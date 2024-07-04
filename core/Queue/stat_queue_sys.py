@@ -1,7 +1,7 @@
 import asyncio
 
 from model.summoner_model import WaitingSummonerObj, WaitingSummonerMatchObj
-from core.stat_job import JobResult
+from core.Job.stat_job import JobResult
 
 from abc import *
 

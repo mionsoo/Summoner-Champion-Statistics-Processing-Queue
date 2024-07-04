@@ -6,10 +6,30 @@ sys.path.append("/usr/src/app")
 
 from common.db import connect_sql_aurora_async, execute_update_queries_summoner_wait, RDS_INSTANCE_TYPE, execute_update_queries_summoner
 from common.const import S_EXECUTE_SUMMONER_COUNT, Status
-from common.utils import get_current_datetime
-from core.stat_summoner_queue import SummonerQueueOperator
-from core.stat_queue_sys import QueueEmptyComment
+from core.Queue.stat_summoner_queue import SummonerQueueOperator
+from core.Queue.stat_queue_sys import QueueEmptyComment
+from core.Job.stat_summoner_job import StatQueueSummonerJob
 
+async def run_queue(queue_op, conn):
+    current_objs = await queue_op.get_current_obj(S_EXECUTE_SUMMONER_COUNT)
+
+    if current_objs is None:
+        return 0
+
+    if current_objs[0].status == Status.Waiting.code:
+        tasks = [asyncio.create_task(StatQueueSummonerJob(current_obj).process()) for current_obj in current_objs]
+        job_results = await asyncio.gather(*tasks)
+        tasks = [await execute_update_queries_summoner_wait(conn, job_result) for job_result in job_results]
+
+    elif current_objs[0].status == Status.Working.code:
+        job_results = []
+        skip_thld = 20
+        for start_idx in range(0, len(current_objs), skip_thld):
+            end_idx = start_idx + skip_thld
+            tasks = [asyncio.create_task(StatQueueSummonerJob(current_obj).process()) for current_obj in current_objs[start_idx:end_idx]]
+            return_data = await asyncio.gather(*tasks)
+            job_results.extend(return_data)
+        tasks = await execute_update_queries_summoner(conn, job_results)
 
 
 async def queue_system():
@@ -52,29 +72,10 @@ async def queue_system():
                 await queue_op.sleep_queue()
 
             elif queue_op.is_data_exists():
-                current_objs = await queue_op.get_current_obj(S_EXECUTE_SUMMONER_COUNT)
-                if current_objs is None:
-                    continue
-
-                if current_objs[0].status == Status.Waiting.code:
-                    tasks = [asyncio.create_task(queue_op.process_job(current_obj, conn)) for current_obj in current_objs]
-                    return_data = await asyncio.gather(*tasks)
-                    tasks = [await execute_update_queries_summoner_wait(conn, data) for data in return_data]
-
-                elif current_objs[0].status == Status.Working.code:
-                    return_datas = []
-                    skip_thld = 20
-                    for start_idx in range(0, len(current_objs), skip_thld):
-                        end_idx = start_idx + skip_thld
-                        tasks = [asyncio.create_task(queue_op.process_job(current_obj, conn)) for current_obj in current_objs[start_idx:end_idx]]
-                        return_data = await asyncio.gather(*tasks)
-                        return_datas.extend(return_data)
-                    tasks = await execute_update_queries_summoner(conn, return_datas)
-
+                await run_queue(queue_op, conn)
                 queue_op.print_counts_remain()
-                print('------------------------------\n')
-
                 queue_empty_comment.set_job_not_done()
+                print('------------------------------\n')
 
         except Exception:
             print("tt ",traceback.format_exc())
@@ -82,8 +83,6 @@ async def queue_system():
 
 if __name__ == '__main__':
     try:
-        # loop = asyncio.get_event_loop()
         asyncio.run(queue_system())
-        # loop.run_until_complete(queue_system(loop))
     except Exception as e:
         print(e)

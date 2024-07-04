@@ -21,15 +21,19 @@ async def request_stats_async(current_obj, client):
 
     async with client.get(url, headers=req_headers) as response:
         data = await response.read()
-        r = json.loads(data)
-        return r
+        try:
+            r = json.loads(data)
+        except:
+            return None
+        else:
+            return r
 
 
 async def wait_func(current_obj: WaitingSummonerObj, conn=None) -> set | None:
     async with aiohttp.ClientSession() as client:
         result = await request_stats_async(current_obj, client)
 
-    if result['msg'] == 'no match':
+    if result is None or result['msg'] == 'no match' or 'error' in result['msg']:
         return None
 
     api_called_match_ids_stats = set(result['msg'].split(', '))
@@ -38,7 +42,7 @@ async def wait_func(current_obj: WaitingSummonerObj, conn=None) -> set | None:
     return api_called_match_ids_stats
 
 
-async def work_func(current_obj, conn):
+async def work_func(current_obj):
     async with aiohttp.ClientSession() as client:
         result = await request_stats_async_work(current_obj, client)
 

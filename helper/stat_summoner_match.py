@@ -72,5 +72,12 @@ async def request_stats_async(current_obj, match_id, client):
         return [BatchStatQueueContainer(**i) for i in r['msg'].values()]
 
     except Exception as e:
+        error_msg = data.decode("utf-8")
+
+        sys_status_code = Status.Error.code
+        if 'Gateway' in error_msg:
+            sys_status_code = Status.Timeout.code
+
+
         print(f'{current_obj.platform_id} {match_id}, error: {data.decode("utf-8")}')
-        return [f'{match_id}, {current_obj.platform_id}, {current_obj.puu_id}, error']
+        return [f'{match_id}, {current_obj.platform_id}, {current_obj.puu_id}, {sys_status_code}, error']

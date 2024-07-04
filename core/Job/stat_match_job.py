@@ -1,4 +1,4 @@
-from core.stat_job import Job, JobResult
+from core.Job.stat_job import Job, JobResult
 from common.const import Status
 from common.utils import get_changed_current_obj_status
 from model.summoner_model import WaitingSummonerMatchObj

@@ -2,7 +2,7 @@ from typing import List, Tuple
 
 from common.const import Status
 from core.Queue.stat_queue_sys import QueueOperator, QueueStatus
-from helper.queries import execute_select_match_count, execute_select_match_obj
+from common.db import execute_select_match_obj, execute_select_match_count
 from model.summoner_model import WaitingSummonerMatchObj, WaitingSummonerObj
 
 

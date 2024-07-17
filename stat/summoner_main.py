@@ -8,9 +8,8 @@ from common.const import S_EXECUTE_SUMMONER_COUNT, Status
 from common.db import (
     RDS_INSTANCE_TYPE,
     connect_sql_aurora_async,
-    execute_update_queries_summoner_wait,
+    execute_update_queries_summoner_wait, execute_update_queries_summoner,
 )
-from helper.queries import execute_update_queries_summoner
 from core.Job.stat_summoner_job import StatQueueSummonerJob
 from core.Queue.stat_queue_sys import QueueEmptyComment
 from core.Queue.stat_summoner_queue import SummonerQueueOperator

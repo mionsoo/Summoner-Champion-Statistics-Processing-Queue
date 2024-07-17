@@ -10,12 +10,11 @@ from common.db import (
     RDS_INSTANCE_TYPE,
     connect_sql_aurora_async,
     execute_match_insert_queries,
-    update_current_obj_status,
+    update_current_obj_status, execute_matches,
 )
 from core.Job.stat_match_job import StatQueueMatchJob
 from core.Queue.stat_match_queue import SummonerMatchQueueOperator
 from core.Queue.stat_queue_sys import QueueEmptyComment
-from helper.queries import execute_matches
 
 
 async def run_queue(sys_oper, conn):
@@ -62,7 +61,7 @@ async def main():
             elif sys_oper.is_data_exists():
                 sys_log.set_empty_log_not_printed()
                 await run_queue(sys_oper, conn)
-                await sys_oper.print_counts_remain()
+                await sys_oper.print_counts_remain(conn)
                 print("------------------------------\n")
 
         except Exception:

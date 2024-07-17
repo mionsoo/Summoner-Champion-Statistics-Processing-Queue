@@ -269,9 +269,9 @@ async def insert_summoner_champion_stats(conn, cursor, table_alias, value_query,
     await conn.commit()
 
 
-async def execute_update_queries_summoner(conn, job_results):
+async def execute_update_queries_summoner(conn, job_results: List[JobResult]):
     async with conn.cursor() as cursor:
-        bulk_items = ", ".join([make_summoner_insert_query(result) for result in job_results])
+        bulk_items = ", ".join([make_summoner_insert_query(result) for result in job_results if result.processed_status != result.target_obj.status])
 
         await cursor.execute(
             "INSERT INTO b2c_summoner_queue(puu_id, platform_id, status, reg_date, reg_datetime) "

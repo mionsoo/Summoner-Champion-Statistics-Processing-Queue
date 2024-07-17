@@ -4,7 +4,7 @@ from model.summoner_model import WaitingSummonerMatchObj, WaitingSummonerObj
 
 
 class JobResult:
-    def __init__(self, data, target_obj, result_status):
+    def __init__(self, data, target_obj: WaitingSummonerObj|WaitingSummonerMatchObj, result_status):
         self.data = data
         self.target_obj = target_obj
         self.processed_status = result_status

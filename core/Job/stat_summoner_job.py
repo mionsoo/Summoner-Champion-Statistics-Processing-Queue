@@ -1,11 +1,10 @@
-from core.Job.stat_job import Job, JobResult
-from common.const import Status
-from common.utils import get_changed_current_obj_status
-from model.summoner_model import WaitingSummonerObj
-
 import traceback
 
+from common.const import Status
+from common.utils import get_changed_current_obj_status
+from core.Job.stat_job import Job, JobResult
 from helper.stat_summoner import wait_func, work_func
+from model.summoner_model import WaitingSummonerObj
 
 
 class StatQueueSummonerJob(Job):
@@ -28,9 +27,4 @@ class StatQueueSummonerJob(Job):
         except Exception:
             print(traceback.format_exc())
 
-        finally:
-            return JobResult(
-                data=func_return,
-                target_obj=self.obj,
-                result_status=result_status
-            )
+        return JobResult(data=func_return, target_obj=self.obj, result_status=result_status)

@@ -1,33 +1,18 @@
+from typing import List, Tuple
+
 from common.const import Status
 from core.Queue.stat_queue_sys import QueueOperator, QueueStatus
-
+from helper.queries import execute_select_match_count, execute_select_match_obj
 from model.summoner_model import WaitingSummonerMatchObj, WaitingSummonerObj
-from typing import Tuple, List
 
 
 def wrap_summoner_obj(obj: Tuple[str, str]) -> WaitingSummonerObj:
     platform_id, puu_id, reg_date, *_ = obj
-    return WaitingSummonerObj(
-        platform_id=platform_id,
-        puu_id=puu_id,
-        status=Status.Working.code,
-        reg_date=reg_date
-    )
-
-
-def wrap_summoner_match_obj(obj) -> WaitingSummonerMatchObj:
-    platform_id, puu_id, status, reg_datetime, match_id = obj
-    return WaitingSummonerMatchObj(
-        platform_id=platform_id,
-        puu_id=puu_id,
-        status=status,
-        reg_datetime=reg_datetime,
-        match_id=match_id
-    )
+    return WaitingSummonerObj(platform_id=platform_id, puu_id=puu_id, status=Status.Working.code, reg_date=reg_date)
 
 
 class SummonerMatchQueueOperator(QueueOperator):
-    async def update_new_data(self, conn):
+    async def update_incoming_data(self, conn):
         async with conn.cursor() as cursor:
             await self.add_queue(cursor, self.working_queue)
 
@@ -39,13 +24,7 @@ class SummonerMatchQueueOperator(QueueOperator):
             status = Status.Working.code
             _status_obj = self.working_queue
 
-        await cursor.execute(
-            'SELECT distinct platform_id, puu_id, reg_date '
-            'FROM b2c_summoner_match_queue '
-            f'WHERE status={status} '
-            # f'ORDER BY reg_datetime ASC '
-        )
-        result = await cursor.fetchall()
+        result = await execute_select_match_obj(cursor, status)
         new_objs = {tuple(wrap_summoner_obj(x).__dict__.values()) for x in result}
 
         exist_objs = {tuple(x.__dict__.values()) for x in _status_obj.deque}
@@ -68,7 +47,9 @@ class SummonerMatchQueueOperator(QueueOperator):
             return [None]
 
     @staticmethod
-    async def get_n_time_popped_value(status_obj: QueueStatus, pop_count) -> List[WaitingSummonerObj | WaitingSummonerMatchObj]:
+    async def get_n_time_popped_value(
+        status_obj: QueueStatus, pop_count
+    ) -> List[WaitingSummonerObj | WaitingSummonerMatchObj]:
         if status_obj.length < pop_count:
             pop_count = pop_count - (pop_count - status_obj.length)
 
@@ -76,13 +57,6 @@ class SummonerMatchQueueOperator(QueueOperator):
 
     async def print_counts_remain(self, conn=None):
         async with conn.cursor() as cursor:
-            await cursor.execute(
-                f'SELECT count(*) '
-                f'FROM b2c_summoner_match_queue '
-                f'WHERE status = {Status.Working.code}'
-            )
-            count = await cursor.fetchone()
-        # conn.close()
+            count = await execute_select_match_count(cursor)
 
-        print(f'\n - Remain\n'
-              f'\tMatch Waiting: {count[0]} ')
+        print(f"\n - Remain\n" f"\tMatch Waiting: {count[0]} ")

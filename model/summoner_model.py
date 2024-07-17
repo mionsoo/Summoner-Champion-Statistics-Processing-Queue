@@ -4,9 +4,9 @@ from pydantic import BaseModel
 
 
 class WaitingSummonerObj(BaseModel):
-    platform_id: str = ''
-    puu_id: str = ''
-    reg_date: datetime.date = datetime.date(2000,1,1)
+    platform_id: str = ""
+    puu_id: str = ""
+    reg_date: datetime.date = datetime.date(2000, 1, 1)
     status: int = -1
     reg_datetime: datetime.datetime = datetime.datetime(2000, 1, 1, 0)
     season: int = 0
@@ -15,4 +15,4 @@ class WaitingSummonerObj(BaseModel):
 
 
 class WaitingSummonerMatchObj(WaitingSummonerObj):
-    match_id: str = ''
+    match_id: str = ""

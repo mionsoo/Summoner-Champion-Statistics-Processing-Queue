@@ -1,14 +1,20 @@
 import asyncio
+import sys
 import traceback
 
-import sys
 sys.path.append("/usr/src/app")
 
-from common.db import connect_sql_aurora_async, execute_update_queries_summoner_wait, RDS_INSTANCE_TYPE, execute_update_queries_summoner
 from common.const import S_EXECUTE_SUMMONER_COUNT, Status
-from core.Queue.stat_summoner_queue import SummonerQueueOperator
-from core.Queue.stat_queue_sys import QueueEmptyComment
+from common.db import (
+    RDS_INSTANCE_TYPE,
+    connect_sql_aurora_async,
+    execute_update_queries_summoner_wait,
+)
+from helper.queries import execute_update_queries_summoner
 from core.Job.stat_summoner_job import StatQueueSummonerJob
+from core.Queue.stat_queue_sys import QueueEmptyComment
+from core.Queue.stat_summoner_queue import SummonerQueueOperator
+
 
 async def run_queue(queue_op, conn):
     current_objs = await queue_op.get_current_obj(S_EXECUTE_SUMMONER_COUNT)
@@ -23,10 +29,13 @@ async def run_queue(queue_op, conn):
 
     elif current_objs[0].status == Status.Working.code:
         job_results = []
-        skip_thld = 20
+        skip_thld = 50
         for start_idx in range(0, len(current_objs), skip_thld):
             end_idx = start_idx + skip_thld
-            tasks = [asyncio.create_task(StatQueueSummonerJob(current_obj).process()) for current_obj in current_objs[start_idx:end_idx]]
+            tasks = [
+                asyncio.create_task(StatQueueSummonerJob(current_obj).process())
+                for current_obj in current_objs[start_idx:end_idx]
+            ]
             return_data = await asyncio.gather(*tasks)
             job_results.extend(return_data)
         tasks = await execute_update_queries_summoner(conn, job_results)
@@ -57,31 +66,32 @@ async def queue_system():
                   Summoner Queue Table 해당 소환사 Status 완료로 표시
                                                                     _
     """
-    queue_empty_comment = QueueEmptyComment()
-    queue_op = SummonerQueueOperator()
+    sys_log = QueueEmptyComment()
+    sys_oper = SummonerQueueOperator()
     conn = await connect_sql_aurora_async(RDS_INSTANCE_TYPE.READ)
 
     while True:
         try:
-            await queue_op.update_new_data(conn)
+            await sys_oper.update_incoming_data(conn)
+            sys_oper.print_counts_remain()
 
-            if queue_op.is_all_job_done() and queue_empty_comment.is_set_print():
-                await queue_empty_comment.print_job_ended()
+            if sys_oper.is_all_job_done() and sys_log.is_empty_log_not_printed():
+                await sys_log.print_empty_log()
 
-            elif queue_op.is_all_job_done():
-                await queue_op.sleep_queue()
+            elif sys_oper.is_all_job_done():
+                await sys_oper.sleep_queue()
 
-            elif queue_op.is_data_exists():
-                await run_queue(queue_op, conn)
-                queue_op.print_counts_remain()
-                queue_empty_comment.set_job_not_done()
-                print('------------------------------\n')
+            elif sys_oper.is_data_exists():
+                sys_log.set_empty_log_not_printed()
+                await run_queue(sys_oper, conn)
+                sys_oper.print_counts_remain()
+                print("------------------------------\n")
 
         except Exception:
-            print("tt ",traceback.format_exc())
+            print("tt ", traceback.format_exc())
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     try:
         asyncio.run(queue_system())
     except Exception as e:

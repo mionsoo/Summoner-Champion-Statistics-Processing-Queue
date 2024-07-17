@@ -1,34 +1,31 @@
 import asyncio
-
-from model.summoner_model import WaitingSummonerObj, WaitingSummonerMatchObj
-from core.Job.stat_job import JobResult
-
-from abc import *
-
+from abc import ABC, abstractmethod
 from collections import deque
 from typing import Deque, List
+
 from common.const import Status
 from common.utils import get_current_datetime
-
+from core.Job.stat_job import JobResult
+from model.summoner_model import WaitingSummonerMatchObj, WaitingSummonerObj
 
 
 class QueueEmptyComment:
     def __init__(self):
         self.flag = True
 
-    def set_job_done(self):
+    def set_empty_log_printed(self):
         self.flag = False
 
-    def set_job_not_done(self):
+    def set_empty_log_not_printed(self):
         self.flag = True
 
-    def is_set_print(self):
+    def is_empty_log_not_printed(self):
         return self.flag
 
-    async def print_job_ended(self):
-        print(f'{get_current_datetime()} | Queue is Empty')
-        print('------------------------------\n')
-        self.set_job_done()
+    async def print_empty_log(self):
+        print(f"{get_current_datetime()} | Queue is Empty")
+        print("------------------------------\n")
+        self.set_empty_log_printed()
         await asyncio.sleep(20)
 
 
@@ -76,7 +73,7 @@ class QueueStatus:
         return popped_value
 
 
-class QueueOperator(metaclass=ABCMeta):
+class QueueOperator(ABC):
     def __init__(self):
         self.waiting_queue = QueueStatus(queue_type=Status.Waiting.code)
         self.working_queue = QueueStatus(queue_type=Status.Working.code)
@@ -85,12 +82,28 @@ class QueueOperator(metaclass=ABCMeta):
         self.ratio = (0.0, 0.0)
         self.is_burst_switch_on = False
 
+    @abstractmethod
+    async def update_incoming_data(self, conn):
+        """Abstract"""
+
+    @abstractmethod
+    def get_current_obj(self, pop_count=0) -> WaitingSummonerObj | WaitingSummonerMatchObj | None:
+        """Abstract"""
+
+    @abstractmethod
+    def print_counts_remain(self, conn=None):
+        """Abstract"""
+
+    @staticmethod
+    async def sleep_queue():
+        print("queue sleep 20 sec")
+        await asyncio.sleep(20)
+
     def burst_switch_off(self):
         self.is_burst_switch_on = False
 
     def burst_switch_on(self):
         self.is_burst_switch_on = True
-
 
     def calc_total_count(self):
         return self.waiting_queue.length + self.working_queue.length
@@ -98,26 +111,12 @@ class QueueOperator(metaclass=ABCMeta):
     def calc_waiting_ratio(self):
         if self.calc_total_count():
             return self.waiting_queue.length / self.calc_total_count()
-        else:
-            return 0
+        return 0
 
     def calc_working_ratio(self):
         if self.calc_total_count():
             return self.working_queue.length / self.calc_total_count()
-        else:
-            return 0
-
-
-    def change_last_obj(self, current_obj: WaitingSummonerObj | WaitingSummonerMatchObj):
-        self.last_obj = current_obj
-
-    def change_last_status(self, current_change_status_code: int):
-        self.last_change_status_code = current_change_status_code
-
-
-    @abstractmethod
-    def get_current_obj(self, pop_count=0) -> WaitingSummonerObj | WaitingSummonerMatchObj | None:
-        """ Abstract """
+        return 0
 
     def is_all_job_done(self) -> bool:
         return self.working_queue.length == 0 and self.waiting_queue.length == 0
@@ -125,23 +124,9 @@ class QueueOperator(metaclass=ABCMeta):
     def is_data_exists(self) -> bool:
         return self.working_queue.length != 0 or self.waiting_queue.length != 0
 
-
-    @abstractmethod
-    def update_new_data(self, conn):
-        pass
-
     async def go_back_to_queue(self, job_result: JobResult):
-        if job_result.target_obj== Status.Waiting.code:
+        if job_result.target_obj == Status.Waiting.code:
             await self.waiting_queue.append(job_result.target_obj)
 
         elif job_result.target_obj == Status.Working.code:
             await self.working_queue.append(job_result.target_obj)
-
-    @abstractmethod
-    def print_counts_remain(self, conn=None):
-        pass
-
-    @staticmethod
-    async def sleep_queue():
-        print('queue sleep 20 sec')
-        await asyncio.sleep(20)

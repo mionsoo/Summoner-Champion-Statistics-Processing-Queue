@@ -10,7 +10,8 @@ from common.db import (
     RDS_INSTANCE_TYPE,
     connect_sql_aurora_async,
     execute_match_insert_queries,
-    update_current_obj_status, execute_matches,
+    execute_matches,
+    update_current_obj_status,
 )
 from core.Job.stat_match_job import StatQueueMatchJob
 from core.Queue.stat_match_queue import SummonerMatchQueueOperator
@@ -33,8 +34,15 @@ async def run_queue(sys_oper, conn):
     queries = [job_result.data for job_result in job_results]
     t_queries = sum(chain.from_iterable(queries), [])
 
+
+    print('insert b2c_summoner_champion_stats_partitioned')
     await execute_match_insert_queries(conn, t_queries)
+    print('insert b2c_summoner_champion_stats_partitioned done')
+
+    print('update obj status')
     await update_current_obj_status(conn, current_objs, t_queries)
+    print('update obj status done')
+
     _ = [
         await sys_oper.go_back_to_queue(job_result)
         for job_result in job_results

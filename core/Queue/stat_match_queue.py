@@ -13,8 +13,10 @@ def wrap_summoner_obj(obj: Tuple[str, str]) -> WaitingSummonerObj:
 
 class SummonerMatchQueueOperator(QueueOperator):
     async def update_incoming_data(self, conn):
+        print('update_incoming_data')
         async with conn.cursor() as cursor:
             await self.add_queue(cursor, self.working_queue)
+        print('update_incoming_data done')
 
     async def add_queue(self, cursor, status_obj: QueueStatus):
         if status_obj.status_type == Status.Waiting.code:

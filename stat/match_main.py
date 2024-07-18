@@ -1,3 +1,4 @@
+import time
 import asyncio
 import sys
 import traceback
@@ -35,13 +36,15 @@ async def run_queue(sys_oper, conn):
     t_queries = sum(chain.from_iterable(queries), [])
 
 
+    t1 = time.time()
     print('insert b2c_summoner_champion_stats_partitioned')
     await execute_match_insert_queries(conn, t_queries)
-    print('insert b2c_summoner_champion_stats_partitioned done')
+    print(f'insert b2c_summoner_champion_stats_partitioned done({time.time() - t1})')
 
+    t2 = time.time()
     print('update obj status')
     await update_current_obj_status(conn, current_objs, t_queries)
-    print('update obj status done')
+    print(f'update obj status done({time.time() - t2})')
 
     _ = [
         await sys_oper.go_back_to_queue(job_result)

@@ -90,14 +90,8 @@ class SummonerQueueOperator(QueueOperator):
     async def get_current_obj(self, pop_count=0) -> List[WaitingSummonerObj | WaitingSummonerMatchObj | None]:
         await asyncio.sleep(0)
 
-        if self.is_burst_switch_on and self.calc_working_ratio() < 0.1:
-            self.burst_switch_off()
-
-        elif self.is_burst_switch_on:
+        if self.is_burst_switch_on:
             return await self.get_n_time_popped_value(self.working_queue, self.working_queue.length)
-
-        elif not self.is_burst_switch_on and self.calc_working_ratio() >= 1.0:
-            self.burst_switch_on()
 
         if 1 <= self.waiting_queue.length:
             return await self.get_n_time_popped_value(self.waiting_queue, pop_count)
@@ -106,6 +100,15 @@ class SummonerQueueOperator(QueueOperator):
             return await self.get_n_time_popped_value(self.working_queue, pop_count)
 
         return [None]
+
+    async def check_burst_switch_on_off(self):
+        if self.is_burst_switch_on and self.calc_working_ratio() < 0.1:
+            self.burst_switch_off()
+        elif not self.is_burst_switch_on and self.calc_working_ratio() >= 1.0:
+            self.burst_switch_on()
+
+
+
 
     @staticmethod
     async def get_n_time_popped_value(

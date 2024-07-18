@@ -83,7 +83,9 @@ async def queue_system():
 
             elif sys_oper.is_data_exists():
                 sys_log.set_empty_log_not_printed()
+                await sys_oper.check_burst_switch_on_off()
                 await run_queue(sys_oper, conn)
+                await sys_oper.check_burst_switch_on_off()
                 sys_oper.print_counts_remain()
                 print("------------------------------\n")
 

@@ -13,5 +13,5 @@ class Status(Enum):
         self.description = description
 
 
-S_EXECUTE_SUMMONER_COUNT = 4
+S_EXECUTE_SUMMONER_COUNT = 6
 M_EXECUTE_SUMMONER_COUNT = 6

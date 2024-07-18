@@ -26,25 +26,32 @@ async def run_queue(sys_oper, conn):
 
     tasks = []
     async with conn.cursor() as cursor:
-        for current_obj in current_objs:
+        for idx, current_obj in enumerate(current_objs):
+            print(f'get obj{idx} match_ids')
             match_ids = await execute_matches(current_obj, cursor)
+            print(f'get obj{idx} match_ids done\n')
             job = StatQueueMatchJob(current_obj=current_obj)
             tasks.append(asyncio.create_task(job.process(match_ids)))
 
+    print(f'request matches')
     job_results = await asyncio.gather(*tasks)
+    print(f'request matches done\n')
+
+    print('post processing')
     queries = [job_result.data for job_result in job_results]
     t_queries = sum(chain.from_iterable(queries), [])
+    print('post processing done\n')
 
 
     t1 = time.time()
     print('insert b2c_summoner_champion_stats_partitioned')
     await execute_match_insert_queries(conn, t_queries)
-    print(f'insert b2c_summoner_champion_stats_partitioned done({time.time() - t1})')
+    print(f'insert b2c_summoner_champion_stats_partitioned done({time.time() - t1})\n')
 
     t2 = time.time()
     print('update obj status')
     await update_current_obj_status(conn, current_objs, t_queries)
-    print(f'update obj status done({time.time() - t2})')
+    print(f'update obj status done({time.time() - t2})\n')
 
     _ = [
         await sys_oper.go_back_to_queue(job_result)

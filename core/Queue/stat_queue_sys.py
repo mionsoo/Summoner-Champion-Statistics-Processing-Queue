@@ -96,8 +96,8 @@ class QueueOperator(ABC):
 
     @staticmethod
     async def sleep_queue():
-        print("queue sleep 20 sec")
-        await asyncio.sleep(20)
+        print("queue sleep 5 sec")
+        await asyncio.sleep(5)
 
     def burst_switch_off(self):
         self.is_burst_switch_on = False

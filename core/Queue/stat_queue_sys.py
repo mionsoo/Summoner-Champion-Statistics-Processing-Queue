@@ -130,3 +130,6 @@ class QueueOperator(ABC):
 
         elif job_result.target_obj == Status.Working.code:
             await self.working_queue.append(job_result.target_obj)
+
+        elif job_result.target_obj == Status.Timeout.code:
+            await self.working_queue.append(job_result.target_obj)

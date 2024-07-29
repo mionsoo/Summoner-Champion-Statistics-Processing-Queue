@@ -71,6 +71,9 @@ async def queue_system():
     conn = await connect_sql_aurora_async(RDS_INSTANCE_TYPE.READ)
 
     while True:
+        if conn.closed:
+            conn = await connect_sql_aurora_async(RDS_INSTANCE_TYPE.READ)
+
         try:
             await sys_oper.update_incoming_data(conn)
             sys_oper.print_counts_remain()

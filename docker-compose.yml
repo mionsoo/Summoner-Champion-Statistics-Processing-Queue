@@ -27,14 +27,14 @@ services:
       AWS_ACCESS: ${AWS_ACCESS}
       AWS_SECRET: ${AWS_SECRET}
 
-  redis1:
-    image: redis
-    restart: on-failure
-    container_name: redis_queue
-    ports:
-      - 6379:6379
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+#  redis1:
+#    image: redis
+#    restart: on-failure
+#    container_name: redis_queue
+#    ports:
+#      - 6379:6379
+#    extra_hosts:
+#      - "host.docker.internal:host-gateway"
 
 #  grafana:
 #    image: grafana/grafana:latest

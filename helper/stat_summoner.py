@@ -54,6 +54,16 @@ async def request_stats_async_work(current_obj, client):
 
 
 async def work_func(current_obj):
+    async with _conn.cursor() as cursor:
+        await cursor.execute(
+            "SELECT match_id, status "
+            "FROM b2c_summoner_match_queue "
+            f"WHERE platform_id={repr(platform_id)} "
+            f"and puu_id={repr(puu_id)} "
+            f"and (status != {Status.Success.code} "
+            f"and status != {Status.Error.code} "
+            f"and status != {Status.Timeout.code})"
+        )
     async with aiohttp.ClientSession() as client:
         result = await request_stats_async_work(current_obj, client)
 

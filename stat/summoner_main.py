@@ -14,7 +14,31 @@ from common.db import (
 from core.Job.stat_summoner_job import StatQueueSummonerJob
 from core.Queue.stat_queue_sys import QueueEmptyComment
 from core.Queue.stat_summoner_queue import SummonerQueueOperator
+from common.utils import get_changed_current_obj_status
+from core.Job.stat_job import JobResult
 
+
+
+
+async def stat_queue_work_status_worker(current_obj, conn):
+    func_return = None
+    async with conn.cursor() as cursor:
+        await cursor.execute(
+            "SELECT match_id, status "
+            "FROM b2c_summoner_match_queue "
+            f"WHERE platform_id={repr(current_obj.platform_id)} "
+            f"and puu_id={repr(current_obj.puu_id)} "
+            f"and (status != {Status.Success.code} "
+            f"and status != {Status.Error.code} "
+            f"and status != {Status.Timeout.code})"
+        )
+        result = await cursor.fetchall()
+        if len(result) > 1:
+            func_return = -1
+
+    result_status = await get_changed_current_obj_status(current_obj, func_return)
+
+    return JobResult(data=func_return, target_obj=current_obj, result_status=result_status)
 
 async def run_queue(queue_op, conn):
     current_objs = await queue_op.get_current_obj(S_EXECUTE_SUMMONER_COUNT)
@@ -32,12 +56,9 @@ async def run_queue(queue_op, conn):
         skip_thld = 50
         for start_idx in range(0, len(current_objs), skip_thld):
             end_idx = start_idx + skip_thld
-            tasks = [
-                asyncio.create_task(StatQueueSummonerJob(current_obj).process())
-                for current_obj in current_objs[start_idx:end_idx]
-            ]
-            return_data = await asyncio.gather(*tasks)
+            return_data = [await stat_queue_work_status_worker(current_obj, conn) for current_obj in current_objs[start_idx:end_idx]]
             job_results.extend(return_data)
+
         tasks = await execute_update_queries_summoner(conn, job_results)
 
 

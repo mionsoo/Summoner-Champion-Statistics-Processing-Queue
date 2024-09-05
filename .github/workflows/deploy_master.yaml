@@ -33,7 +33,7 @@ jobs:
         with:
           command_timeout: 30m0s
           host: ${{ secrets.HOST }}
-          username: ubuntu
+          username: ec2-user
           key: ${{ secrets.KEY }}
           script: |
             cd ~/B2C_Deeplol_Riot_Api_Queue

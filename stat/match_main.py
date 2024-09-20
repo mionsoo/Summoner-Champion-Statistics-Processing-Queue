@@ -50,7 +50,7 @@ async def main():
 
     while True:
         if conn.closed:
-            conn = await connect_sql_aurora_async(RDS_INSTANCE_TYPE.READ)
+            break
 
         try:
             await sys_oper.update_incoming_data(conn)

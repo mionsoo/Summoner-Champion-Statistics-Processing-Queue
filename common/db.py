@@ -28,7 +28,8 @@ ssm_key = ssm_client.get_parameter(Name="b2c_mongo_pass")
 _mongo_pass = ssm_key["Parameter"]["Value"]
 
 parameter = ssm_client.get_parameter(Name="riot_api_key", WithDecryption=False)
-db_pass = ssm_client.get_parameter(Name="b2c_db_pass", WithDecryption=False)["Parameter"]["Value"]
+# db_pass = ssm_client.get_parameter(Name="b2c_db_pass", WithDecryption=False)["Parameter"]["Value"]
+db_pass = ssm_client.get_parameter(Name="MYSQL", WithDecryption=False)["Parameter"]["Value"]
 riot_api_key = parameter["Parameter"]["Value"]
 
 
@@ -98,10 +99,14 @@ def connect_sql_aurora(instance_type: RDS_INSTANCE_TYPE):
     메인 db 커서
     :return:
     """
-    host_url = get_rds_instance_host(instance_type)
+    # host_url = get_rds_instance_host(instance_type)
+    host_url = '172.31.0.246'
 
+    # conn = pymysql.connect(
+    #     host=host_url, user="dbmasteruser", password=db_pass, db=conf_dict.get("AURORA_DB"), charset="utf8mb4"
+    # )
     conn = pymysql.connect(
-        host=host_url, user="dbmasteruser", password=db_pass, db=conf_dict.get("AURORA_DB"), charset="utf8mb4"
+        host=host_url, user="deeplol", password=db_pass, db="deeplol", charset="utf8mb4"
     )
 
     return conn
@@ -120,12 +125,21 @@ def sql_execute(query, conn):
 
 
 async def connect_sql_aurora_async(instance_type):
-    host_url = get_rds_instance_host(instance_type)
+    # host_url = get_rds_instance_host(instance_type)
+    host_url = '172.31.0.246'
+    # return await aiomysql.connect(
+    #     host=host_url,
+    #     user="dbmasteruser",
+    #     password=db_pass,
+    #     db=conf_dict.get("AURORA_DB"),
+    #     charset="utf8mb4",
+    #     autocommit=True,
+    # )
     return await aiomysql.connect(
         host=host_url,
-        user="dbmasteruser",
+        user="deeplol",
         password=db_pass,
-        db=conf_dict.get("AURORA_DB"),
+        db="deeplol",
         charset="utf8mb4",
         autocommit=True,
     )

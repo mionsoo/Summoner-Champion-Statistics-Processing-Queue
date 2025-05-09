@@ -111,7 +111,6 @@ def connect_sql_aurora(instance_type: RDS_INSTANCE_TYPE):
 
     return conn
 
-
 def sql_execute(query, conn):
     """
     SQL 작업 처리하여 리턴 값 반환

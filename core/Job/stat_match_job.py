@@ -1,22 +1,22 @@
 import traceback
 
-from common.const import Status
+from common.const import JobStatus
 from common.utils import get_changed_current_obj_status
 from core.Job.stat_job import Job, JobResult
-from helper.stat_summoner_match import wait_func, work_func
-from model.summoner_model import WaitingSummonerMatchObj
+from helper.Match import wait_func, work_func
+from model.Summoner import WaitingSummonerMatchJob
 
 
 class StatQueueMatchJob(Job):
     @staticmethod
-    def search_suitable_process_func(current_obj: WaitingSummonerMatchObj):
-        if current_obj.status == Status.Waiting.code:
+    def search_suitable_process_func(current_obj: WaitingSummonerMatchJob):
+        if current_obj.status == JobStatus.Waiting.type:
             return wait_func
-        elif current_obj.status == Status.Working.code:
+        elif current_obj.status == JobStatus.Working.type:
             return work_func
 
     async def process(self, match_ids=None) -> JobResult:
-        result_status = Status.Error.code
+        result_status = JobStatus.Error.type
         queries = None
 
         try:

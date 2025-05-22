@@ -1,17 +1,17 @@
 from enum import Enum
 
 
-class Status(Enum):
+class JobStatus(Enum):
     Waiting = (0, "waiting")
     Success = (1, "success")
     Working = (2, "working")
     Error   = (3, "error")
     Timeout = (4, "timeout")
 
-    def __init__(self, code, description):
-        self.code = code
+    def __init__(self, _type, description):
+        self.type = _type
         self.description = description
 
 
-S_EXECUTE_SUMMONER_COUNT = 6
-M_EXECUTE_SUMMONER_COUNT = 6
+SUMMONER_QUEUE_THROUGHPUT = 6
+MATCH_QUEUE_THROUGHPUT = 6

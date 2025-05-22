@@ -8,9 +8,9 @@ import aiomysql
 import boto3
 import pymysql
 
-from common.const import Status
+from common.const import JobStatus
 from core.Job.stat_job import JobResult
-from model.match_model import BatchStatQueueContainer, MatchStatsQueueContainer
+from model.Match import BatchStatQueueContainer, MatchStatsQueueContainer
 
 aws_access = os.environ.get("AWS_ACCESS", None)
 aws_secret = os.environ.get("AWS_SECRET", None)
@@ -31,7 +31,7 @@ parameter = ssm_client.get_parameter(Name="riot_api_key", WithDecryption=False)
 # db_pass = ssm_client.get_parameter(Name="b2c_db_pass", WithDecryption=False)["Parameter"]["Value"]
 db_pass = ssm_client.get_parameter(Name="MYSQL", WithDecryption=False)["Parameter"]["Value"]
 riot_api_key = parameter["Parameter"]["Value"]
-
+mongo_access = ssm_client.get_parameter(Name="MONGO", WithDecryption=False)["Parameter"]["Value"]
 
 @dataclass
 class RDS_INSTANCE_TYPE:
@@ -157,7 +157,7 @@ def make_insert_duplicate_keys(table_alias):
     return ",".join([f" {i}={table_alias}.{i}" for i in BatchStatQueueContainer.__dict__["__fields__"].keys()])
 
 
-async def update_current_obj_status(conn, current_objs, t_queries: List[BatchStatQueueContainer | str]):
+async def update_current_job_status(conn, current_objs, t_queries: List[BatchStatQueueContainer | str]):
     p_id = {i.puu_id: i.platform_id for i in current_objs}
 
     sorted_stats_queue_containers = [sort_match_stats_queue_container(query) for query in t_queries]
@@ -190,7 +190,7 @@ def sort_match_stats_queue_container(query: BatchStatQueueContainer | str):
         return [None, container]
 
     container = MatchStatsQueueContainer(
-        match_id=query.match_id, platform_id=query.platform_id, puu_id=query.puu_id, status=Status.Success.code
+        match_id=query.match_id, platform_id=query.platform_id, puu_id=query.puu_id, status=JobStatus.Success.type
     )
 
     return [container, None]
@@ -206,18 +206,18 @@ async def execute_match_insert_queries(conn, t_queries: List[BatchStatQueueConta
 
 
 def make_bulk_insert_query_values_summoner_match_queue(current_obj, match_id) -> str:
-    return f"({repr(current_obj.platform_id)}, {repr(current_obj.puu_id)}, {repr(match_id)}, {Status.Working.code})"
+    return f"({repr(current_obj.platform_id)}, {repr(current_obj.puu_id)}, {repr(match_id)}, {JobStatus.Working.type})"
 
 
 def make_summoner_insert_query(result: JobResult):
-    target = result.target_obj
+    target = result.target_job
     processed_status = result.processed_status
     return f"({repr(target.puu_id)}, {repr(target.platform_id)}, {processed_status}, {repr(str(target.reg_date))}, {repr(str(target.reg_datetime))})"
 
 
 async def execute_update_queries_summoner_wait(conn, job_result: JobResult):
     match_ids = job_result.data
-    current_obj = job_result.target_obj
+    current_obj = job_result.target_job
 
     async with conn.cursor() as cursor:
         if match_ids != -1 and match_ids is not None:
@@ -236,7 +236,7 @@ async def execute_update_queries_summoner_wait(conn, job_result: JobResult):
             except:
                 pass
 
-            if current_obj.status == Status.Waiting.code and bulk_item:
+            if current_obj.status == JobStatus.Waiting.type and bulk_item:
                 try:
                     await execute_summoner_match_insert_query(bulk_item, conn, cursor)
 
@@ -259,7 +259,7 @@ async def execute_matches(current_obj, cursor):
         "FROM b2c_summoner_match_queue "
         f"WHERE puu_id = {repr(current_obj.puu_id)} "
         f"and platform_id = {repr(current_obj.platform_id)} "
-        f"and status = {Status.Working.code} "
+        f"and status = {JobStatus.Working.type} "
     )
     result = await cursor.fetchall()
     match_ids = sum(list(result), ())
@@ -284,7 +284,7 @@ async def insert_summoner_champion_stats(conn, cursor, table_alias, value_query,
 
 async def execute_update_queries_summoner(conn, job_results: List[JobResult]):
     async with conn.cursor() as cursor:
-        bulk_items = ", ".join([make_summoner_insert_query(result) for result in job_results if result.processed_status != result.target_obj.status])
+        bulk_items = ", ".join([make_summoner_insert_query(result) for result in job_results if result.processed_status != result.target_job.status])
         if bulk_items:
             await cursor.execute(
                 "INSERT INTO b2c_summoner_queue(puu_id, platform_id, status, reg_date, reg_datetime) "
@@ -335,7 +335,7 @@ async def execute_select_inserted_match_id(current_obj, cursor):
     return result
 
 
-async def execute_select_match_obj(cursor, status):
+async def execute_select_match_job(cursor, status):
     await cursor.execute(
         "SELECT distinct platform_id, puu_id, reg_date "
         "FROM b2c_summoner_match_queue "
@@ -349,7 +349,7 @@ async def execute_select_match_count(cursor):
     await cursor.execute(
         f"SELECT count(*) "
         f"FROM b2c_summoner_match_queue "
-        f"WHERE status = {Status.Working.code}"
+        f"WHERE status = {JobStatus.Working.type}"
     )
     count = await cursor.fetchone()
     return count

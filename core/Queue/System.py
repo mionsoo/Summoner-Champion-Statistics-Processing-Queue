@@ -3,13 +3,13 @@ from abc import ABC, abstractmethod
 from collections import deque
 from typing import Deque, List
 
-from common.const import Status
+from common.const import JobStatus
 from common.utils import get_current_datetime
 from core.Job.stat_job import JobResult
-from model.summoner_model import WaitingSummonerMatchObj, WaitingSummonerObj
+from model.Summoner import WaitingSummonerMatchJob, WaitingSummonerJob
 
 
-class QueueEmptyComment:
+class Comments:
     def __init__(self):
         self.flag = True
 
@@ -29,13 +29,13 @@ class QueueEmptyComment:
         await asyncio.sleep(20)
 
 
-class QueueStatus:
-    def __init__(self, queue_type: int):
-        self.status_type = queue_type
+class StatQueue:
+    def __init__(self, job_type: int):
+        self.job_type = job_type
         self.length = 0
-        self.deque: Deque[WaitingSummonerObj | WaitingSummonerMatchObj] = deque()
+        self.deque: Deque[WaitingSummonerJob | WaitingSummonerMatchJob] = deque()
 
-    async def reinit(self, objs: List[WaitingSummonerObj | WaitingSummonerMatchObj]):
+    async def reinit(self, objs: List[WaitingSummonerJob | WaitingSummonerMatchJob]):
         await asyncio.sleep(0)
         self.deque = deque(objs)
         self.length = len(self.deque)
@@ -48,13 +48,13 @@ class QueueStatus:
         await asyncio.sleep(0)
         self.length -= 1
 
-    async def extend(self, objs: List[WaitingSummonerObj | WaitingSummonerMatchObj]):
+    async def extend(self, objs: List[WaitingSummonerJob | WaitingSummonerMatchJob]):
         await asyncio.sleep(0)
 
         self.deque.extend(objs)
         self.length += len(objs)
 
-    async def append(self, obj: WaitingSummonerObj | WaitingSummonerMatchObj):
+    async def append(self, obj: WaitingSummonerJob | WaitingSummonerMatchJob):
         await asyncio.sleep(0)
 
         self.deque.append(obj)
@@ -65,18 +65,18 @@ class QueueStatus:
         try:
             popped_value = self.deque.popleft()
         except IndexError:
-            popped_value = WaitingSummonerObj()
+            popped_value = WaitingSummonerJob()
         else:
-            if popped_value.status == self.status_type:
+            if popped_value.status == self.job_type:
                 await self.sub_count()
 
         return popped_value
 
 
-class QueueOperator(ABC):
+class Operator(ABC):
     def __init__(self):
-        self.waiting_queue = QueueStatus(queue_type=Status.Waiting.code)
-        self.working_queue = QueueStatus(queue_type=Status.Working.code)
+        self.waiting_queue = StatQueue(job_type=StatQueue.Waiting.type)
+        self.working_queue = StatQueue(job_type=StatQueue.Working.type)
         self.last_obj = None
         self.last_change_status_code = None
         self.ratio = (0.0, 0.0)
@@ -87,11 +87,11 @@ class QueueOperator(ABC):
         """Abstract"""
 
     @abstractmethod
-    def get_current_obj(self, pop_count=0) -> WaitingSummonerObj | WaitingSummonerMatchObj | None:
+    def get_current_job(self, pop_count=0) -> WaitingSummonerJob | WaitingSummonerMatchJob | None:
         """Abstract"""
 
     @abstractmethod
-    def print_counts_remain(self, conn=None):
+    def print_remain_counts(self, conn=None):
         """Abstract"""
 
     @staticmethod
@@ -105,31 +105,31 @@ class QueueOperator(ABC):
     def burst_switch_on(self):
         self.is_burst_switch_on = True
 
-    def calc_total_count(self):
+    def calc_total_job_count(self):
         return self.waiting_queue.length + self.working_queue.length
 
-    def calc_waiting_ratio(self):
-        if self.calc_total_count():
-            return self.waiting_queue.length / self.calc_total_count()
+    def calc_waiting_job_ratio(self):
+        if self.calc_total_job_count():
+            return self.waiting_queue.length / self.calc_total_job_count()
         return 0
 
-    def calc_working_ratio(self):
-        if self.calc_total_count():
-            return self.working_queue.length / self.calc_total_count()
+    def calc_working_job_ratio(self):
+        if self.calc_total_job_count():
+            return self.working_queue.length / self.calc_total_job_count()
         return 0
 
     def is_all_job_done(self) -> bool:
         return self.working_queue.length == 0 and self.waiting_queue.length == 0
 
-    def is_data_exists(self) -> bool:
+    def is_job_exists(self) -> bool:
         return self.working_queue.length != 0 or self.waiting_queue.length != 0
 
-    async def go_back_to_queue(self, job_result: JobResult):
-        if job_result.target_obj == Status.Waiting.code:
-            await self.waiting_queue.append(job_result.target_obj)
+    async def return_to_queue(self, job_result: JobResult):
+        if job_result.target_job == StatQueue.Waiting.type:
+            await self.waiting_queue.append(job_result.target_job)
 
-        elif job_result.target_obj == Status.Working.code:
-            await self.working_queue.append(job_result.target_obj)
+        elif job_result.target_job == StatQueue.Working.type:
+            await self.working_queue.append(job_result.target_job)
 
-        elif job_result.target_obj == Status.Timeout.code:
-            await self.working_queue.append(job_result.target_obj)
+        elif job_result.target_job == StatQueue.Timeout.type:
+            await self.working_queue.append(job_result.target_job)

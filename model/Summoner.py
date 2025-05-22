@@ -3,7 +3,7 @@ import datetime
 from pydantic import BaseModel
 
 
-class WaitingSummonerObj(BaseModel):
+class WaitingSummonerJob(BaseModel):
     platform_id: str = ""
     puu_id: str = ""
     reg_date: datetime.date = datetime.date(2000, 1, 1)
@@ -14,5 +14,5 @@ class WaitingSummonerObj(BaseModel):
     season_end_timestamp: datetime.datetime = datetime.datetime(2000, 1, 1, 0)
 
 
-class WaitingSummonerMatchObj(WaitingSummonerObj):
+class WaitingSummonerMatchJob(WaitingSummonerJob):
     match_id: str = ""

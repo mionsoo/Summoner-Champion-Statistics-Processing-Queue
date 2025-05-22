@@ -1,12 +1,12 @@
 from abc import *
 
-from model.summoner_model import WaitingSummonerMatchObj, WaitingSummonerObj
+from model.Summoner import WaitingSummonerMatchJob, WaitingSummonerJob
 
 
 class JobResult:
-    def __init__(self, data, target_obj: WaitingSummonerObj|WaitingSummonerMatchObj, result_status):
+    def __init__(self, data, target_obj: WaitingSummonerJob | WaitingSummonerMatchJob, result_status):
         self.data = data
-        self.target_obj = target_obj
+        self.target_job = target_obj
         self.processed_status = result_status
 
 
@@ -20,5 +20,5 @@ class Job(metaclass=ABCMeta):
 
     @staticmethod
     @abstractmethod
-    def search_suitable_process_func(current_obj: WaitingSummonerObj | WaitingSummonerMatchObj):
+    def search_suitable_process_func(current_obj: WaitingSummonerJob | WaitingSummonerMatchJob):
         pass

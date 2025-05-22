@@ -20,7 +20,7 @@ import requests
 host = "redis_queue" if os.environ["API_ENV"] == "dev" else os.environ["HOST"]
 rd = redis.Redis(host=host, port=6379, decode_responses=True)
 
-SERVER_NOT_WORKING = []
+SERVER_NOT_ALLOWED = []
 
 
 class StrEnum(str, Enum):
@@ -315,7 +315,7 @@ def is_unsearchable_response(result):
     )
 
 
-def get_current_waiting_object() -> ApiInfo:
+def get_current_waiting_job() -> ApiInfo:
     r = rd.rpop("error_list")
     current_obj = ApiInfo(*r.split("/@#"))
     print(f"{get_current_datetime()} | ", current_obj, rd.llen("error_list"))
@@ -342,15 +342,15 @@ def queue_system():
             elif rd.llen("error_list") >= 1:
                 is_queue_is_empty_string_not_printed = True
 
-                current_obj = get_current_waiting_object()
+                current_job = get_current_waiting_job()
 
-                summoner_result = get_json_time_limit(get_summoner_api_url(current_obj), time_limit=10)
+                summoner_result = get_json_time_limit(get_summoner_api_url(current_job), time_limit=10)
                 if is_api_status_green(summoner_result):
                     summoner = summoner_result.json()
-                    current_obj.puu_id = summoner["puuid"]
-                    current_obj.summoner_id = summoner["id"]
-                    current_obj.summoner_name = summoner["name"]
-                    current_obj.account_id = summoner["accountId"]
+                    current_job.puu_id = summoner["puuid"]
+                    current_job.summoner_id = summoner["id"]
+                    current_job.summoner_name = summoner["name"]
+                    current_job.account_id = summoner["accountId"]
 
                 elif is_unsearchable_response(summoner_result):
                     print(f"{get_current_datetime()} | {summoner_result.json()['status']['message']}")
@@ -358,16 +358,16 @@ def queue_system():
                     continue
                 else:
                     print(f"{get_current_datetime()} | ", summoner_result.json())
-                    rd.rpush("error_list", current_obj.make_redis_string())
+                    rd.rpush("error_list", current_job.make_redis_string())
                     system_sleep(retry_after=get_max_retry_after(summoner_result))
 
-                tier_result = get_json_time_limit(get_tier_api_url(current_obj), time_limit=10)
+                tier_result = get_json_time_limit(get_tier_api_url(current_job), time_limit=10)
 
-                challenge_result = get_json_time_limit(get_challenge_api_url(current_obj), time_limit=10)
-                account_result = get_json_time_limit(get_account_api_url(current_obj), time_limit=10)
-                if current_obj.platform_id in SERVER_NOT_WORKING:
+                challenge_result = get_json_time_limit(get_challenge_api_url(current_job), time_limit=10)
+                account_result = get_json_time_limit(get_account_api_url(current_job), time_limit=10)
+                if current_job.platform_id in SERVER_NOT_ALLOWED:
                     print("SERVER_NOT_WORKING")
-                    print(f"current server: {current_obj.platform_id}")
+                    print(f"current server: {current_job.platform_id}")
                     print(f"{tier_result.json()}")
 
                 elif is_api_status_all_green(challenge_result, summoner_result, tier_result):
@@ -375,9 +375,9 @@ def queue_system():
                     if res is None:
                         print("No Account v1 Response  (gameName, tagLine)")
                     else:
-                        insert_summoner_basic_info(res=res, platform_id=current_obj.platform_id)
+                        insert_summoner_basic_info(res=res, platform_id=current_job.platform_id)
                 else:
-                    rd.rpush("error_list", current_obj.make_redis_string())
+                    rd.rpush("error_list", current_job.make_redis_string())
                     system_sleep(retry_after=get_max_retry_after(summoner_result, tier_result, challenge_result))
 
                 # 현재 대기인원
@@ -406,30 +406,24 @@ def get_max_retry_after(summoner_result={}, tier_result={}, challenge_result={})
     total_retry_after = [0]
 
     if isinstance(summoner_result, requests.models.Response):
-        summoner_retry_after = int(
-            summoner_result.headers.get("Retry-After") if summoner_result.headers.get("Retry-After") else 0
-        )
+        summoner_retry_after = int(summoner_result.headers.get("Retry-After")) if summoner_result.headers.get("Retry-After") else 0
         total_retry_after.append(summoner_retry_after)
 
     if isinstance(tier_result, requests.models.Response):
-        tier_retry_after = int(tier_result.headers.get("Retry-After") if tier_result.headers.get("Retry-After") else 0)
+        tier_retry_after = int(tier_result.headers.get("Retry-After")) if tier_result.headers.get("Retry-After") else 0
         total_retry_after.append(tier_retry_after)
 
     if isinstance(challenge_result, requests.models.Response):
-        challenge_retry_after = int(
-            challenge_result.headers.get("Retry-After") if challenge_result.headers.get("Retry-After") else 0
-        )
+        challenge_retry_after = int(challenge_result.headers.get("Retry-After")) if challenge_result.headers.get("Retry-After") else 0
         total_retry_after.append(challenge_retry_after)
 
     return max(total_retry_after)
 
 
 def is_api_status_all_green(challenge_result, summoner_result, tier_result):
-    return (
-        is_api_status_green(summoner_result)
-        and is_api_status_green(tier_result)
-        and is_api_status_green(challenge_result)
-    )
+    return (is_api_status_green(summoner_result)
+            and is_api_status_green(tier_result)
+            and is_api_status_green(challenge_result))
 
 
 def system_sleep(retry_after):
